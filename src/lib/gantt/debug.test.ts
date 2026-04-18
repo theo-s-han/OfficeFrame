@@ -34,6 +34,8 @@ describe("gantt debug mode", () => {
         backgroundTemplate: "clean",
         weekColumnWidth: 96,
         monthColumnWidth: 120,
+        wbsProjectName: "오피스 툴",
+        wbsStructureType: "deliverable",
         tasks: [],
       }),
     ).toEqual({

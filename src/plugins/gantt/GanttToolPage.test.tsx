@@ -6,7 +6,7 @@ describe("GanttEditorShell", () => {
   it("renders the updated gantt toolbar and core controls", () => {
     render(<GanttEditorShell />);
 
-    expect(screen.getByText("기본 일정표 preview")).toBeInTheDocument();
+    expect(screen.getByText("기본 일정형 preview")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "작업 추가" })).toBeEnabled();
     expect(
       screen.getByRole("button", { name: "이미지로 내보내기" }),
@@ -128,10 +128,10 @@ describe("GanttEditorShell", () => {
     fireEvent.click(screen.getByRole("button", { name: /마일스톤형/ }));
 
     expect(
-      screen.getByRole("heading", { level: 2, name: "마일스톤 흐름" }),
+      screen.getByRole("heading", { level: 3, name: "마일스톤 흐름" }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByLabelText("프로젝트 킥오프 id"),
+      screen.queryByLabelText(/프로젝트 킥오프 id/i),
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText("프로젝트 킥오프 날짜")).toHaveAttribute(
       "type",
@@ -140,9 +140,7 @@ describe("GanttEditorShell", () => {
     expect(screen.getByLabelText("프로젝트 킥오프 날짜")).toHaveValue(
       "2026-04-20",
     );
-    expect(screen.getByLabelText("프로젝트 킥오프 섹션")).toHaveValue(
-      "기획",
-    );
+    expect(screen.getByLabelText("프로젝트 킥오프 섹션")).toHaveValue("기획");
     expect(screen.getByLabelText("프로젝트 킥오프 상태")).toHaveValue("done");
     expect(screen.getByLabelText("프로젝트 킥오프 이전 단계")).toHaveValue("");
     expect(
@@ -151,12 +149,6 @@ describe("GanttEditorShell", () => {
         { name: "범위 승인" },
       ),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("option", { name: "위험" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("option", { name: "차단" }),
-    ).not.toBeInTheDocument();
     expect(screen.queryByText("Mermaid Gantt")).not.toBeInTheDocument();
     expect(
       screen.queryByText("Milestone interactive renderer"),
@@ -164,29 +156,36 @@ describe("GanttEditorShell", () => {
     expect(
       screen.queryByLabelText("프로젝트 킥오프 종료"),
     ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText("문서용 DSL"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("문서용 DSL")).not.toBeInTheDocument();
   });
 
-  it("uses WBS-specific hierarchy and node fields", () => {
+  it("uses WBS tree-specific hierarchy inputs and a single preview", () => {
     render(<GanttEditorShell />);
 
-    fireEvent.click(screen.getByRole("button", { name: /WBS\/단계형/ }));
+    fireEvent.click(screen.getByRole("button", { name: /WBS Tree/ }));
 
-    expect(screen.getByText("WBS preview")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("wbs-plan")).toBeInTheDocument();
-    expect(screen.getByLabelText("기획 code")).toHaveValue("1");
-    expect(screen.getByLabelText("기획 nodeType")).toHaveValue("group");
-    expect(screen.getByLabelText("기획 open")).toBeChecked();
-    expect(screen.getByLabelText("사용자 시나리오 정리 parentId")).toHaveValue(
-      "wbs-plan",
+    expect(screen.getByText("WBS Tree preview")).toBeInTheDocument();
+    expect(screen.getByLabelText("WBS 프로젝트명")).toHaveValue("오피스 툴 구축");
+    expect(screen.getByLabelText("WBS 구조 유형")).toHaveValue("deliverable");
+    expect(screen.getByLabelText("요구 분석 항목명")).toHaveValue("요구 분석");
+    expect(screen.getByLabelText("요구 분석 상위 항목")).toHaveValue("");
+    expect(screen.getByLabelText("요구 분석 상태")).toHaveValue("in-progress");
+    expect(screen.getByLabelText("이해관계자 인터뷰 요약 상위 항목")).toHaveValue(
+      "wbs-discovery",
     );
-    expect(screen.getByLabelText("입력 스키마 정의 dependsOn")).toHaveValue(
-      "wbs-scenario",
-    );
-    expect(screen.getByText("Mermaid TreeView")).toBeInTheDocument();
-    expect(screen.getByText("Mermaid Mindmap")).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByLabelText("이해관계자 인터뷰 요약 상위 항목"),
+      ).getByRole("option", { name: /요구 분석$/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("요구 분석 시작"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("요구 분석 종료"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Mermaid TreeView")).not.toBeInTheDocument();
+    expect(screen.queryByText("Mermaid Mindmap")).not.toBeInTheDocument();
   });
 
   it("changes basic project styling controls", () => {

@@ -1,60 +1,54 @@
-# PLANS.md
+﻿# PLANS.md
 
-## 목적
+## 紐⑹쟻
 
-큰 작업의 순서, 상태, 다음 액션을 관리한다.
-이 문서는 상세 진행 로그가 아니라, 다음에 무엇을 해야 하는지 확인하는 작업 큐다.
+???묒뾽???쒖꽌, ?곹깭, ?ㅼ쓬 ?≪뀡??愿由ы븳??
+??臾몄꽌???곸꽭 吏꾪뻾 濡쒓렇媛 ?꾨땲?? ?ㅼ쓬??臾댁뾿???댁빞 ?섎뒗吏 ?뺤씤?섎뒗 ?묒뾽 ?먮떎.
 
-## 기록 대상
+## 湲곕줉 ???
+- ?뚯씪/紐⑤뱢 ?щ윭 媛쒕? 嫄대뱶由щ뒗 ?묒뾽
+- 湲곗닠 ?ㅽ깮 蹂寃?- ??湲곕뒫 異붽?
+- 由ъ뒪?ш? ?믪? 援ъ“ 蹂寃?- MVP 踰붿쐞瑜??볧엳???묒뾽
 
-- 파일/모듈 여러 개를 건드리는 작업
-- 기술 스택 변경
-- 큰 기능 추가
-- 리스크가 높은 구조 변경
-- MVP 범위를 넓히는 작업
+?묒? 臾멸뎄 ?섏젙, ?⑥씪 ?뚯씪 ?섏????ъ냼??踰꾧렇 ?섏젙, ?⑥닚 ?뚯뒪??蹂닿컯? ??臾몄꽌???ｌ? ?딅뒗??
 
-작은 문구 수정, 단일 파일 수준의 사소한 버그 수정, 단순 테스트 보강은 이 문서에 넣지 않는다.
+## ?곹깭媛?
+- Proposed: ?쒖븞?? ?꾩쭅 ?뱀씤 ??- Ready: ?뱀씤?? 諛붾줈 ?쒖옉 媛??- In Progress: 吏꾪뻾 以?- Blocked: 留됲옒
+- Done: ?꾨즺
+- Dropped: ?섏? ?딄린濡???
+## ?꾩옱 ?ㅼ쓬 ?≪뀡
 
-## 상태값
+- PLAN-006 plugin 구조 최소 정리는 사용자 요청 시 시작 대기로 유지한다.
 
-- Proposed: 제안됨, 아직 승인 전
-- Ready: 승인됨, 바로 시작 가능
-- In Progress: 진행 중
-- Blocked: 막힘
-- Done: 완료
-- Dropped: 하지 않기로 함
-
-## 현재 다음 액션
-
-- PLAN-006 plugin 구조 최소 정리 범위를 결정한다.
-
-## 작업 큐
-
-| 순서 | ID       | 작업                             | 상태     | 목적                                                                                                                              | 완료 기준                                                                                                                                                                                            | 의존성                    |
+## ?묒뾽 ??
+| ?쒖꽌 | ID       | ?묒뾽                             | ?곹깭     | 紐⑹쟻                                                                                                                              | ?꾨즺 湲곗?                                                                                                                                                                                            | ?섏〈??                   |
 | ---- | -------- | -------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
-| 1    | PLAN-001 | 간트 MVP 1단계 범위 확정         | Done     | Frappe Gantt 도입 전에 MVP에서 구현할 정확한 편집/preview 범위를 정한다.                                                          | 포함/제외 범위와 검증 기준이 문서에 반영된다.                                                                                                                                                        | 실행 골격 완료            |
-| 2    | PLAN-002 | Frappe Gantt 렌더링 연결         | Done     | sample task를 실제 간트 preview로 표시한다.                                                                                       | `/gantt`에서 Frappe Gantt preview가 렌더링되고 build가 통과한다.                                                                                                                                     | PLAN-001                  |
-| 3    | PLAN-003 | 간트 task 편집 흐름 구현         | Done     | Task / Start / End / Progress 기반 추가/수정/삭제 흐름을 만든다.                                                                  | 유효한 task 추가/수정/삭제가 UI 상태와 preview에 반영된다.                                                                                                                                           | PLAN-002                  |
-| 4    | PLAN-004 | 간트 validation UX 구현          | Done     | 잘못된 입력을 필드 또는 행 단위로 보여준다.                                                                                       | 빈 Task, 잘못된 날짜, End < Start, Progress 범위 오류가 막힌다.                                                                                                                                      | PLAN-003                  |
-| 5    | PLAN-005 | PNG export 기술 검증 및 구현     | Done     | 현재 preview를 문서용 PNG로 저장한다.                                                                                             | PNG 다운로드가 동작하고 품질 리스크가 기록된다.                                                                                                                                                      | PLAN-002                  |
-| 6    | PLAN-006 | plugin 구조 최소 정리            | Proposed | 다음 도구를 붙일 수 있는 최소 registry/component 경계를 정리한다.                                                                 | 간트 외 placeholder 도구 추가 경로가 명확해진다.                                                                                                                                                     | 간트 MVP 주요 구조 안정화 |
-| 7    | PLAN-007 | 디버그 관찰성 및 테스트 진입점   | Done     | Codex가 값 흐름을 확인할 수 있는 순수 함수 테스트와 opt-in debug log를 둔다.                                                      | 실제 사용에는 영향이 없고 debug mode에서 주요 값 변화가 추적된다.                                                                                                                                    | PLAN-002                  |
-| 8    | PLAN-008 | 간트 타입 선택 프리셋            | Done     | 기본/로드맵/마일스톤/진행률/WBS 타입을 선택해 입력 화면과 preview를 바꾼다.                                                       | 타입 선택 시 샘플, 입력 필드, preview 스타일, PNG 대상이 함께 바뀐다.                                                                                                                                | PLAN-005                  |
-| 9    | PLAN-009 | 간트 레이아웃과 날짜 단위 개선   | Done     | preview를 상단에 크게 배치하고 입력을 하단 행으로 내려 날짜 단위와 표시 범위를 직접 정하게 한다.                                  | preview가 화면 폭 안에서 스크롤되고 day/week/month/quarter 단위 입력과 표시 범위가 동작한다.                                                                                                         | PLAN-008                  |
-| 10   | PLAN-010 | 간트 편집 안정화와 타입별 입력   | Done     | 마우스 편집 중 차트가 불필요하게 재생성되지 않게 하고, 간트 타입마다 실제 사용 방식에 맞는 입력을 제공한다.                       | 클릭 선택이 차트 재생성을 유발하지 않고 invalid drag 값은 이전 데이터로 롤백되며, 타입별 입력/샘플/문서/테스트가 맞춰진다.                                                                           | PLAN-009                  |
-| 11   | PLAN-011 | 기본형 표시/꾸미기 옵션          | Done     | 기본 일정표에서 주 단위 헤더, 입력 행 확장, task 색상, 배경 템플릿을 제공한다.                                                    | Week preview가 월/주 2줄 헤더로 보이고, 입력 영역은 페이지로 확장되며, 기본형 task 색상과 배경 템플릿이 preview/PNG에 반영된다.                                                                      | PLAN-010                  |
-| 12   | PLAN-012 | 기본형 색상 선택 창              | Done     | 기본 일정표의 task 색상 변경을 작은 select 대신 팔레트/컬러 피커/HEX 입력이 있는 창으로 제공한다.                                 | 기본형 task에서 색상 선택 창을 열어 프리셋 또는 직접 입력 색상을 적용하고 preview/PNG 대상 막대 색상이 즉시 바뀐다.                                                                                  | PLAN-011                  |
-| 13   | PLAN-013 | Milestone/WBS adapter 분리       | Done     | 유사한 로드맵형/진행률 추적형을 제거하고 Milestone/WBS를 DSL과 renderer adapter 기반으로 분리한다.                                | 간트 타입이 기본형/마일스톤/WBS로 줄고, Milestone/WBS가 각자 다른 입력 필드와 jsGanttImproved/Mermaid adapter preview를 가진다.                                                                      | PLAN-012                  |
-| 14   | PLAN-014 | 이미지 출력과 Enterprise palette | Done     | preview를 이미지로 생성/다운로드하는 흐름을 추가하고 간트 전용 기업형 palette/token 구조를 만든다.                                | 이미지 생성 후 화면에서 확인하고 다운로드할 수 있으며, task/group/milestone/progress/dependency/grid 색상이 Enterprise Light palette 규칙으로 적용된다.                                              | PLAN-013                  |
-| 15   | PLAN-015 | milestone-only preview 정리      | Done     | milestone 전용 샘플, 검증, adapter, preview layout을 정리해 단일 날짜 마일스톤 데이터만으로 자연스러운 차트를 만든다.             | 5개 이상 milestone 샘플이 4~6주 범위에 자연스럽게 배치되고, self/missing dependency와 invalid status/date가 막히며 status는 row가 아닌 스타일로만 쓰인다.                                            | PLAN-013                  |
-| 16   | PLAN-016 | toolbar/export/timeline UX 정리  | Done     | 오늘 이동 제거, 차트 전용 이미지 export 단일화, 표시 시작/종료 date 입력 고정, Week 세로 가이드, Week/Month 간격 조절을 정리한다. | toolbar가 예시 데이터/전체 초기화/이미지로 내보내기로 정리되고, 표시 범위는 항상 `YYYY-MM-DD` date input이며, 기본형 Week 세로 가이드와 Week/Month 간격 슬라이더가 preview와 export 흐름에 반영된다. | PLAN-014, PLAN-015        |
-| 17   | PLAN-017 | milestone v1 재설계              | Done        | milestone 기능을 입력-단일 preview-PNG 다운로드 흐름으로 다시 설계하고, 개발자 중심 입력과 이중 renderer 구조를 제거한다.        | milestone 화면에서 Mermaid Timeline preview 1개만 보이고, id/dependsOn이 숨겨지며, "이전 단계" 선택 UI/검증/PNG 다운로드/샘플 데이터가 문서형 흐름에 맞게 동작한다.                                   | PLAN-015, PLAN-016        |
+| 1    | PLAN-001 | 媛꾪듃 MVP 1?④퀎 踰붿쐞 ?뺤젙         | Done     | Frappe Gantt ?꾩엯 ?꾩뿉 MVP?먯꽌 援ы쁽???뺥솗???몄쭛/preview 踰붿쐞瑜??뺥븳??                                                          | ?ы븿/?쒖쇅 踰붿쐞? 寃利?湲곗???臾몄꽌??諛섏쁺?쒕떎.                                                                                                                                                        | ?ㅽ뻾 怨④꺽 ?꾨즺            |
+| 2    | PLAN-002 | Frappe Gantt ?뚮뜑留??곌껐         | Done     | sample task瑜??ㅼ젣 媛꾪듃 preview濡??쒖떆?쒕떎.                                                                                       | `/gantt`?먯꽌 Frappe Gantt preview媛 ?뚮뜑留곷릺怨?build媛 ?듦낵?쒕떎.                                                                                                                                     | PLAN-001                  |
+| 3    | PLAN-003 | 媛꾪듃 task ?몄쭛 ?먮쫫 援ы쁽         | Done     | Task / Start / End / Progress 湲곕컲 異붽?/?섏젙/??젣 ?먮쫫??留뚮뱺??                                                                  | ?좏슚??task 異붽?/?섏젙/??젣媛 UI ?곹깭? preview??諛섏쁺?쒕떎.                                                                                                                                           | PLAN-002                  |
+| 4    | PLAN-004 | 媛꾪듃 validation UX 援ы쁽          | Done     | ?섎せ???낅젰???꾨뱶 ?먮뒗 ???⑥쐞濡?蹂댁뿬以??                                                                                       | 鍮?Task, ?섎せ???좎쭨, End < Start, Progress 踰붿쐞 ?ㅻ쪟媛 留됲엺??                                                                                                                                      | PLAN-003                  |
+| 5    | PLAN-005 | PNG export 湲곗닠 寃利?諛?援ы쁽     | Done     | ?꾩옱 preview瑜?臾몄꽌??PNG濡???ν븳??                                                                                             | PNG ?ㅼ슫濡쒕뱶媛 ?숈옉?섍퀬 ?덉쭏 由ъ뒪?ш? 湲곕줉?쒕떎.                                                                                                                                                      | PLAN-002                  |
+| 6    | PLAN-006 | plugin 援ъ“ 理쒖냼 ?뺣━            | Proposed | ?ㅼ쓬 ?꾧뎄瑜?遺숈씪 ???덈뒗 理쒖냼 registry/component 寃쎄퀎瑜??뺣━?쒕떎.                                                                 | 媛꾪듃 ??placeholder ?꾧뎄 異붽? 寃쎈줈媛 紐낇솗?댁쭊??                                                                                                                                                     | 媛꾪듃 MVP 二쇱슂 援ъ“ ?덉젙??|
+| 7    | PLAN-007 | ?붾쾭洹?愿李곗꽦 諛??뚯뒪??吏꾩엯??  | Done     | Codex媛 媛??먮쫫???뺤씤?????덈뒗 ?쒖닔 ?⑥닔 ?뚯뒪?몄? opt-in debug log瑜??붾떎.                                                      | ?ㅼ젣 ?ъ슜?먮뒗 ?곹뼢???녾퀬 debug mode?먯꽌 二쇱슂 媛?蹂?붽? 異붿쟻?쒕떎.                                                                                                                                    | PLAN-002                  |
+| 8    | PLAN-008 | 媛꾪듃 ????좏깮 ?꾨━??           | Done     | 湲곕낯/濡쒕뱶留?留덉씪?ㅽ넠/吏꾪뻾瑜?WBS ??낆쓣 ?좏깮???낅젰 ?붾㈃怨?preview瑜?諛붽씔??                                                       | ????좏깮 ???섑뵆, ?낅젰 ?꾨뱶, preview ?ㅽ??? PNG ??곸씠 ?④퍡 諛붾먮떎.                                                                                                                                | PLAN-005                  |
+| 9    | PLAN-009 | 媛꾪듃 ?덉씠?꾩썐怨??좎쭨 ?⑥쐞 媛쒖꽑   | Done     | preview瑜??곷떒???ш쾶 諛곗튂?섍퀬 ?낅젰???섎떒 ?됱쑝濡??대젮 ?좎쭨 ?⑥쐞? ?쒖떆 踰붿쐞瑜?吏곸젒 ?뺥븯寃??쒕떎.                                  | preview媛 ?붾㈃ ???덉뿉???ㅽ겕濡ㅻ릺怨?day/week/month/quarter ?⑥쐞 ?낅젰怨??쒖떆 踰붿쐞媛 ?숈옉?쒕떎.                                                                                                         | PLAN-008                  |
+| 10   | PLAN-010 | 媛꾪듃 ?몄쭛 ?덉젙?붿? ??낅퀎 ?낅젰   | Done     | 留덉슦???몄쭛 以?李⑦듃媛 遺덊븘?뷀븯寃??ъ깮?깅릺吏 ?딄쾶 ?섍퀬, 媛꾪듃 ??낅쭏???ㅼ젣 ?ъ슜 諛⑹떇??留욌뒗 ?낅젰???쒓났?쒕떎.                       | ?대┃ ?좏깮??李⑦듃 ?ъ깮?깆쓣 ?좊컻?섏? ?딄퀬 invalid drag 媛믪? ?댁쟾 ?곗씠?곕줈 濡ㅻ갚?섎ŉ, ??낅퀎 ?낅젰/?섑뵆/臾몄꽌/?뚯뒪?멸? 留욎떠吏꾨떎.                                                                           | PLAN-009                  |
+| 11   | PLAN-011 | 湲곕낯???쒖떆/袁몃?湲??듭뀡          | Done     | 湲곕낯 ?쇱젙?쒖뿉??二??⑥쐞 ?ㅻ뜑, ?낅젰 ???뺤옣, task ?됱긽, 諛곌꼍 ?쒗뵆由우쓣 ?쒓났?쒕떎.                                                    | Week preview媛 ??二?2以??ㅻ뜑濡?蹂댁씠怨? ?낅젰 ?곸뿭? ?섏씠吏濡??뺤옣?섎ŉ, 湲곕낯??task ?됱긽怨?諛곌꼍 ?쒗뵆由우씠 preview/PNG??諛섏쁺?쒕떎.                                                                      | PLAN-010                  |
+| 12   | PLAN-012 | 湲곕낯???됱긽 ?좏깮 李?             | Done     | 湲곕낯 ?쇱젙?쒖쓽 task ?됱긽 蹂寃쎌쓣 ?묒? select ????붾젅??而щ윭 ?쇱빱/HEX ?낅젰???덈뒗 李쎌쑝濡??쒓났?쒕떎.                                 | 湲곕낯??task?먯꽌 ?됱긽 ?좏깮 李쎌쓣 ?댁뼱 ?꾨━???먮뒗 吏곸젒 ?낅젰 ?됱긽???곸슜?섍퀬 preview/PNG ???留됰? ?됱긽??利됱떆 諛붾먮떎.                                                                                  | PLAN-011                  |
+| 13   | PLAN-013 | Milestone/WBS adapter 遺꾨━       | Done     | ?좎궗??濡쒕뱶留듯삎/吏꾪뻾瑜?異붿쟻?뺤쓣 ?쒓굅?섍퀬 Milestone/WBS瑜?DSL怨?renderer adapter 湲곕컲?쇰줈 遺꾨━?쒕떎.                                | 媛꾪듃 ??낆씠 湲곕낯??留덉씪?ㅽ넠/WBS濡?以꾧퀬, Milestone/WBS媛 媛곸옄 ?ㅻⅨ ?낅젰 ?꾨뱶? jsGanttImproved/Mermaid adapter preview瑜?媛吏꾨떎.                                                                      | PLAN-012                  |
+| 14   | PLAN-014 | ?대?吏 異쒕젰怨?Enterprise palette | Done     | preview瑜??대?吏濡??앹꽦/?ㅼ슫濡쒕뱶?섎뒗 ?먮쫫??異붽??섍퀬 媛꾪듃 ?꾩슜 湲곗뾽??palette/token 援ъ“瑜?留뚮뱺??                                | ?대?吏 ?앹꽦 ???붾㈃?먯꽌 ?뺤씤?섍퀬 ?ㅼ슫濡쒕뱶?????덉쑝硫? task/group/milestone/progress/dependency/grid ?됱긽??Enterprise Light palette 洹쒖튃?쇰줈 ?곸슜?쒕떎.                                              | PLAN-013                  |
+| 15   | PLAN-015 | milestone-only preview ?뺣━      | Done     | milestone ?꾩슜 ?섑뵆, 寃利? adapter, preview layout???뺣━???⑥씪 ?좎쭨 留덉씪?ㅽ넠 ?곗씠?곕쭔?쇰줈 ?먯뿰?ㅻ윭??李⑦듃瑜?留뚮뱺??             | 5媛??댁긽 milestone ?섑뵆??4~6二?踰붿쐞???먯뿰?ㅻ읇寃?諛곗튂?섍퀬, self/missing dependency? invalid status/date媛 留됲엳硫?status??row媛 ?꾨땶 ?ㅽ??쇰줈留??곗씤??                                            | PLAN-013                  |
+| 16   | PLAN-016 | toolbar/export/timeline UX ?뺣━  | Done     | ?ㅻ뒛 ?대룞 ?쒓굅, 李⑦듃 ?꾩슜 ?대?吏 export ?⑥씪?? ?쒖떆 ?쒖옉/醫낅즺 date ?낅젰 怨좎젙, Week ?몃줈 媛?대뱶, Week/Month 媛꾧꺽 議곗젅???뺣━?쒕떎. | toolbar媛 ?덉떆 ?곗씠???꾩껜 珥덇린???대?吏濡??대낫?닿린濡??뺣━?섍퀬, ?쒖떆 踰붿쐞????긽 `YYYY-MM-DD` date input?대ŉ, 湲곕낯??Week ?몃줈 媛?대뱶? Week/Month 媛꾧꺽 ?щ씪?대뜑媛 preview? export ?먮쫫??諛섏쁺?쒕떎. | PLAN-014, PLAN-015        |
+| 17   | PLAN-017 | milestone v1 ?ъ꽕怨?             | Done        | milestone 湲곕뒫???낅젰-?⑥씪 preview-PNG ?ㅼ슫濡쒕뱶 ?먮쫫?쇰줈 ?ㅼ떆 ?ㅺ퀎?섍퀬, 媛쒕컻??以묒떖 ?낅젰怨??댁쨷 renderer 援ъ“瑜??쒓굅?쒕떎.        | milestone ?붾㈃?먯꽌 Mermaid Timeline preview 1媛쒕쭔 蹂댁씠怨? id/dependsOn???④꺼吏硫? "?댁쟾 ?④퀎" ?좏깮 UI/寃利?PNG ?ㅼ슫濡쒕뱶/?섑뵆 ?곗씠?곌? 臾몄꽌???먮쫫??留욊쾶 ?숈옉?쒕떎.                                   | PLAN-015, PLAN-016        |
+| 18   | PLAN-018 | 留덉씤?쒕㏊ ?꾧뎄 異붽?               | Done        | 臾대즺 ?ㅽ뵂?뚯뒪 湲곕컲??留덉씤?쒕㏊ editor shell??異붽??섍퀬, ?낅젰/preview/PNG export瑜?臾몄꽌???먮쫫?쇰줈 臾띕뒗??                          | ?덇낵 registry??留덉씤?쒕㏊???쒖꽦 ?꾧뎄濡??몄텧?섍퀬, `/mindmap`?먯꽌 ?ㅽ뵂?뚯뒪 renderer 湲곕컲 preview, 怨꾩링 ?낅젰, ?됱긽 ?좏깮, PNG export, ?뚯뒪??臾몄꽌媛 ?④퍡 ?숈옉?쒕떎.                                           | PLAN-006                  |
+| 19   | PLAN-019 | WBS Tree ?ъ꽕怨?                 | Done | WBS瑜??쇱젙?뺤씠 ?꾨땲??怨꾩링???묒뾽 遺꾪빐 援ъ“濡??ㅼ떆 ?ㅺ퀎?섍퀬, ?ъ슜???낅젰怨?臾몄꽌??preview瑜??⑥씪 寃곌낵臾??먮쫫?쇰줈 ?뺣━?쒕떎.        | WBS ?붾㈃?먯꽌 react-d3-tree 湲곕컲 preview 1媛쒕쭔 蹂댁씠怨? ?꾨줈?앺듃紐?援ъ“ ?좏삎/??ぉ紐??곸쐞 ??ぉ/?대떦???곹깭/?ㅻ챸留??낅젰?섎ŉ, WBS 肄붾뱶 ?먮룞 ?앹꽦怨?PNG export, validation, ?섑뵆 ?곗씠?? 臾몄꽌媛 ?④퍡 留욎떠吏꾨떎. | PLAN-013, PLAN-016        |
 
-## 운영 규칙
+## ?댁쁺 洹쒖튃
 
-- 큰 작업은 `Ready` 상태가 되기 전까지 구현하지 않는다.
-- 작업 시작 시 해당 행의 상태를 `In Progress`로 바꾸고 `현재 다음 액션`을 갱신한다.
-- 작업이 막히면 상태를 `Blocked`로 바꾸고 의존성 또는 필요한 결정을 적는다.
-- 작업이 끝나면 상태를 `Done`으로 바꾸고 다음 작업을 `현재 다음 액션`에 올린다.
-- 상세 진행 로그와 완료 이력은 커밋 로그로 대체한다.
-- 새 아이디어가 확정 전이면 `docs/project/BACKLOG.md`에 두고, 실행 순서가 잡힌 큰 작업만 이 문서로 옮긴다.
+- ???묒뾽? `Ready` ?곹깭媛 ?섍린 ?꾧퉴吏 援ы쁽?섏? ?딅뒗??
+- ?묒뾽 ?쒖옉 ???대떦 ?됱쓽 ?곹깭瑜?`In Progress`濡?諛붽씀怨?`?꾩옱 ?ㅼ쓬 ?≪뀡`??媛깆떊?쒕떎.
+- ?묒뾽??留됲엳硫??곹깭瑜?`Blocked`濡?諛붽씀怨??섏〈???먮뒗 ?꾩슂??寃곗젙???곷뒗??
+- ?묒뾽???앸굹硫??곹깭瑜?`Done`?쇰줈 諛붽씀怨??ㅼ쓬 ?묒뾽??`?꾩옱 ?ㅼ쓬 ?≪뀡`???щ┛??
+- ?곸꽭 吏꾪뻾 濡쒓렇? ?꾨즺 ?대젰? 而ㅻ컠 濡쒓렇濡??泥댄븳??
+- ???꾩씠?붿뼱媛 ?뺤젙 ?꾩씠硫?`docs/project/BACKLOG.md`???먭퀬, ?ㅽ뻾 ?쒖꽌媛 ?≫엺 ???묒뾽留???臾몄꽌濡???릿??
+

@@ -12,6 +12,8 @@ import {
   createEmptyTaskForChartType,
   ganttChartTypes,
   getGanttChartTypeConfig,
+  getDefaultWbsProjectName,
+  getDefaultWbsStructureType,
   getPreviewTasksForChartType,
   getSampleTasksForChartType,
 } from "@/lib/gantt/chartTypes";
@@ -49,6 +51,8 @@ import {
   updateGanttTaskId,
   validateGanttTasks,
   wbsNodeTypeOptions,
+  wbsStructureTypeOptions,
+  wbsTaskStatusOptions,
   type GanttChartType,
   type GanttEditorShellState,
   type GanttTask,
@@ -67,11 +71,13 @@ import {
 } from "@/lib/gantt/svgExport";
 import { exportMilestonePreviewImage } from "@/lib/gantt/milestonePreviewExport";
 import { exportProjectPreviewImage } from "@/lib/gantt/projectPreviewExport";
+import { exportWbsTreePreviewImage } from "@/lib/gantt/wbsTreeExport";
 import { resolveGanttTaskVisual } from "@/lib/gantt/taskColorResolver";
 import {
   defaultGanttPalette,
   getGanttPaletteCssVariables,
 } from "@/lib/gantt/theme";
+import { getWbsParentOptions } from "@/lib/gantt/wbsTree";
 
 type GeneratedGanttImage = {
   dataUrl: string;
@@ -121,6 +127,8 @@ const initialChartType: GanttChartType = "project";
 const initialTasks = getSampleTasksForChartType(initialChartType);
 const initialViewMode =
   getGanttChartTypeConfig(initialChartType).defaultViewMode;
+const initialWbsProjectName = getDefaultWbsProjectName();
+const initialWbsStructureType = getDefaultWbsStructureType();
 const initialTimelineRange = getTimelineRangeForTasks(
   initialTasks,
   initialViewMode,
@@ -686,6 +694,8 @@ export function GanttEditorShell() {
     backgroundTemplate: "clean",
     weekColumnWidth: defaultProjectWeekColumnWidth,
     monthColumnWidth: defaultProjectMonthColumnWidth,
+    wbsProjectName: initialWbsProjectName,
+    wbsStructureType: initialWbsStructureType,
     selectedTaskId: initialTasks[0]?.id,
   });
   const [debugEnabled] = useState(() => readGanttDebugEnabled());
@@ -909,37 +919,6 @@ export function GanttEditorShell() {
       patch.end = String(value);
     }
 
-    if (field === "nodeType") {
-      const nodeType = value as WbsNodeType;
-      const currentTask = getCurrentTask(taskId);
-      const baseDate =
-        currentTask?.date ||
-        currentTask?.start ||
-        state.timelineStart ||
-        formatDateForInput(new Date());
-
-      if (nodeType === "group") {
-        patch.start = "";
-        patch.end = "";
-        patch.date = "";
-        patch.progress = 0;
-      }
-
-      if (nodeType === "milestone") {
-        patch.date = baseDate;
-        patch.start = baseDate;
-        patch.end = baseDate;
-        patch.progress = 100;
-      }
-
-      if (nodeType === "task") {
-        patch.start = currentTask?.start || baseDate;
-        patch.end = currentTask?.end || baseDate;
-        patch.date = currentTask?.date || baseDate;
-        patch.progress = currentTask?.progress ?? 0;
-      }
-    }
-
     const nextTasks = updateGanttTask(state.tasks, taskId, patch);
 
     updateState(
@@ -976,14 +955,6 @@ export function GanttEditorShell() {
       patch.date = value;
       patch.start = value;
       patch.end = value;
-    }
-
-    if (state.chartType === "wbs") {
-      if (currentTask?.nodeType === "milestone") {
-        patch.date = value;
-        patch.start = value;
-        patch.end = value;
-      }
     }
 
     if (
@@ -1074,6 +1045,14 @@ export function GanttEditorShell() {
         timelineStart: nextTimelineRange.start,
         timelineEnd: nextTimelineRange.end,
         backgroundTemplate: state.backgroundTemplate,
+        wbsProjectName:
+          state.chartType === "wbs"
+            ? getDefaultWbsProjectName()
+            : state.wbsProjectName,
+        wbsStructureType:
+          state.chartType === "wbs"
+            ? getDefaultWbsStructureType()
+            : state.wbsStructureType,
         selectedTaskId: nextTasks[0]?.id,
       },
       "tasks.reset_sample",
@@ -1088,6 +1067,30 @@ export function GanttEditorShell() {
         selectedTaskId: undefined,
       },
       "tasks.clear",
+    );
+  }
+
+  function handleWbsProjectNameChange(value: string) {
+    updateState(
+      {
+        ...state,
+        wbsProjectName: value,
+      },
+      "wbs.project_name.change",
+    );
+  }
+
+  function handleWbsStructureTypeChange(value: string) {
+    const nextStructureType =
+      wbsStructureTypeOptions.find((option) => option.value === value)?.value ??
+      state.wbsStructureType;
+
+    updateState(
+      {
+        ...state,
+        wbsStructureType: nextStructureType,
+      },
+      "wbs.structure_type.change",
     );
   }
 
@@ -1132,6 +1135,12 @@ export function GanttEditorShell() {
         backgroundTemplate: state.backgroundTemplate,
         weekColumnWidth: state.weekColumnWidth,
         monthColumnWidth: state.monthColumnWidth,
+        wbsProjectName:
+          chartType === "wbs" ? getDefaultWbsProjectName() : state.wbsProjectName,
+        wbsStructureType:
+          chartType === "wbs"
+            ? getDefaultWbsStructureType()
+            : state.wbsStructureType,
         selectedTaskId: nextTasks[0]?.id,
       },
       "chart_type.change",
@@ -1372,6 +1381,24 @@ export function GanttEditorShell() {
           byteLength: dataUrl.length,
           fileName: image.fileName,
           renderer: "milestone-preview-canvas",
+        });
+
+        return image;
+      }
+
+      if (state.chartType === "wbs") {
+        const dataUrl = await withTimeout(
+          exportWbsTreePreviewImage(previewRef.current),
+          imageExportTimeoutMs,
+          "wbs image export timeout",
+        );
+        const image = createImageState(dataUrl);
+
+        setExportStatus("차트 이미지를 준비했습니다.");
+        recordGanttDebugEvent(debugEnabled, "export.image.success", {
+          byteLength: dataUrl.length,
+          fileName: image.fileName,
+          renderer: "wbs-tree-preview-canvas",
         });
 
         return image;
@@ -1848,6 +1875,84 @@ export function GanttEditorShell() {
     );
   }
 
+  function renderWbsTreeTaskRow(task: GanttTask) {
+    const parentOptions = getWbsParentOptions(
+      state.tasks,
+      task.id,
+      state.wbsStructureType,
+    );
+
+    return (
+      <>
+        <label>
+          <span>항목명</span>
+          <input
+            aria-label={`${task.name} 항목명`}
+            value={task.name}
+            onChange={(event) =>
+              handleTaskChange(task.id, "name", event.target.value)
+            }
+          />
+        </label>
+        <label>
+          <span>상위 항목</span>
+          <select
+            aria-label={`${task.name} 상위 항목`}
+            value={task.parentId ?? ""}
+            onChange={(event) =>
+              handleTaskChange(task.id, "parentId", event.target.value)
+            }
+          >
+            <option value="">최상위 항목</option>
+            {parentOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>담당자</span>
+          <input
+            aria-label={`${task.name} 담당자`}
+            value={task.owner ?? ""}
+            onChange={(event) =>
+              handleTaskChange(task.id, "owner", event.target.value)
+            }
+          />
+        </label>
+        <label>
+          <span>상태</span>
+          <select
+            aria-label={`${task.name} 상태`}
+            value={task.status ?? "not-started"}
+            onChange={(event) =>
+              handleTaskChange(task.id, "status", event.target.value)
+            }
+          >
+            {wbsTaskStatusOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="wide-field">
+          <span>설명</span>
+          <textarea
+            aria-label={`${task.name} 설명`}
+            value={task.notes ?? ""}
+            onChange={(event) =>
+              handleTaskChange(task.id, "notes", event.target.value)
+            }
+          />
+        </label>
+      </>
+    );
+  }
+
+  void renderWbsTaskRow;
+
   return (
     <section className="editor-shell" aria-label="간트 에디터">
       <div className="chart-type-selector" aria-label="간트 타입 선택">
@@ -1877,7 +1982,8 @@ export function GanttEditorShell() {
         </button>
       </div>
 
-      <div className="timeline-control-bar" aria-label="날짜 단위와 표시 범위">
+      {state.chartType !== "wbs" ? (
+        <div className="timeline-control-bar" aria-label="날짜 단위와 표시 범위">
         <div className="view-mode-group" aria-label="날짜 입력 단위">
           {viewModes.map((item) => (
             <button
@@ -1965,7 +2071,8 @@ export function GanttEditorShell() {
             ) : null}
           </div>
         ) : null}
-      </div>
+        </div>
+      ) : null}
 
       <div className="editor-layout">
         <section
@@ -1992,11 +2099,14 @@ export function GanttEditorShell() {
               chartType={state.chartType}
               debugEnabled={debugEnabled}
               monthColumnWidth={state.monthColumnWidth}
+              selectedTaskId={state.selectedTaskId}
               tasks={previewTasks}
               timelineEnd={state.timelineEnd}
               timelineStart={state.timelineStart}
               viewMode={state.viewMode}
               weekColumnWidth={state.weekColumnWidth}
+              wbsProjectName={state.wbsProjectName}
+              wbsStructureType={state.wbsStructureType}
               onDateChange={handleDateChange}
               onProgressChange={handleProgressChange}
               onSelectTask={handlePreviewTaskSelect}
@@ -2006,10 +2116,25 @@ export function GanttEditorShell() {
           <div className="preview-meta" aria-live="polite">
             <span>{previewTasks.length}개 항목 preview</span>
             <span>{chartTypeConfig.shortName}</span>
-            <span>{state.viewMode} 단위</span>
-            <span>
-              {state.timelineStart} - {state.timelineEnd}
-            </span>
+            {state.chartType === "wbs" ? (
+              <>
+                <span>{state.wbsProjectName}</span>
+                <span>
+                  {
+                    wbsStructureTypeOptions.find(
+                      (option) => option.value === state.wbsStructureType,
+                    )?.label
+                  }
+                </span>
+              </>
+            ) : (
+              <>
+                <span>{state.viewMode} 단위</span>
+                <span>
+                  {state.timelineStart} - {state.timelineEnd}
+                </span>
+              </>
+            )}
           </div>
           {exportStatus ? (
             <p className="export-status">{exportStatus}</p>
@@ -2032,6 +2157,37 @@ export function GanttEditorShell() {
             </button>
           </div>
 
+          {state.chartType === "wbs" ? (
+            <div className="wbs-editor-meta">
+              <label>
+                <span>프로젝트명</span>
+                <input
+                  aria-label="WBS 프로젝트명"
+                  value={state.wbsProjectName}
+                  onChange={(event) =>
+                    handleWbsProjectNameChange(event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                <span>구조 유형</span>
+                <select
+                  aria-label="WBS 구조 유형"
+                  value={state.wbsStructureType}
+                  onChange={(event) =>
+                    handleWbsStructureTypeChange(event.target.value)
+                  }
+                >
+                  {wbsStructureTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          ) : null}
+
           {state.tasks.length === 0 ? (
             <div className="empty-state">
               작업을 추가하면 preview가 표시됩니다.
@@ -2053,7 +2209,7 @@ export function GanttEditorShell() {
                     ? renderProjectTaskRow(task)
                     : state.chartType === "milestones"
                       ? renderMilestoneTaskRow(task)
-                      : renderWbsTaskRow(task)}
+                      : renderWbsTreeTaskRow(task)}
                   <button
                     className="remove-task-button"
                     type="button"

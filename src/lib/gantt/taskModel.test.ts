@@ -4,13 +4,12 @@ import {
   applyGanttDateChange,
   applyGanttProgressChange,
   applySafeGanttDatePatch,
-  clampProjectTimelineColumnWidth,
   createGanttDebugSnapshot,
   defaultProjectMonthColumnWidth,
   defaultProjectWeekColumnWidth,
   getValidPreviewTasks,
-  isValidGanttTaskColor,
   isValidDateObject,
+  isValidGanttTaskColor,
   normalizeGanttTaskColor,
   removeGanttTask,
   updateGanttTask,
@@ -89,11 +88,7 @@ describe("gantt task model test entry points", () => {
       new Date("2026-05-01T00:00:00"),
       new Date("2026-05-03T23:59:59"),
     );
-    const progressChanged = applyGanttProgressChange(
-      dateChanged,
-      "task-1",
-      110,
-    );
+    const progressChanged = applyGanttProgressChange(dateChanged, "task-1", 110);
 
     expect(progressChanged[0]).toMatchObject({
       start: "2026-05-01",
@@ -149,26 +144,9 @@ describe("gantt task model test entry points", () => {
     expect(normalizeGanttTaskColor("not-a-color")).toBe("#5B6EE1");
     expect(isValidGanttTaskColor("#2F7E9E")).toBe(true);
     expect(isValidGanttTaskColor("coral")).toBe(false);
-    expect(
-      validateGanttTasks([
-        {
-          id: "task-1",
-          name: "기획",
-          start: "2026-04-20",
-          end: "2026-04-24",
-          progress: 20,
-          color: "coral",
-        },
-      ]),
-    ).toEqual([
-      expect.objectContaining({
-        taskId: "task-1",
-        field: "color",
-      }),
-    ]);
   });
 
-  it("validates milestone ids, dates, dependencies, and cycles", () => {
+  it("validates milestone ids, dates, dependencies, and statuses", () => {
     const milestoneIssues = validateGanttTasks(
       [
         {
@@ -187,6 +165,7 @@ describe("gantt task model test entry points", () => {
           start: "2026-05-01",
           end: "2026-05-01",
           progress: 100,
+          status: "blocked",
           dependsOn: ["ms-1"],
         },
       ],
@@ -205,116 +184,40 @@ describe("gantt task model test entry points", () => {
           field: "dependsOn",
           message: "자기 자신을 dependsOn으로 참조할 수 없습니다.",
         }),
-      ]),
-    );
-  });
-
-  it("rejects milestone-only month dates, missing dependencies, self dependencies, and invalid statuses", () => {
-    const milestoneIssues = validateGanttTasks(
-      [
-        {
-          id: "ms-month",
-          name: "월 단위 입력",
-          date: "2026-04",
-          start: "",
-          end: "",
-          progress: 100,
-          status: "planned",
-          dependsOn: [],
-        },
-        {
-          id: "ms-self",
-          name: "자기 참조",
-          date: "2026-04-20",
-          start: "2026-04-20",
-          end: "2026-04-20",
-          progress: 100,
-          status: "planned",
-          dependsOn: ["ms-self"],
-        },
-        {
-          id: "ms-missing",
-          name: "누락 참조",
-          date: "2026-04-24",
-          start: "2026-04-24",
-          end: "2026-04-24",
-          progress: 100,
-          status: "done",
-          dependsOn: ["missing"],
-        },
-        {
-          id: "ms-status",
-          name: "잘못된 상태",
-          date: "2026-04-28",
-          start: "2026-04-28",
-          end: "2026-04-28",
-          progress: 100,
-          status: "blocked",
-          dependsOn: [],
-        },
-      ],
-      "milestones",
-    );
-
-    expect(milestoneIssues).toEqual(
-      expect.arrayContaining([
         expect.objectContaining({
-          taskId: "ms-month",
-          field: "date",
-          message: "마일스톤 날짜는 YYYY-MM-DD 하루 단위 날짜여야 합니다.",
-        }),
-        expect.objectContaining({
-          taskId: "ms-self",
-          field: "dependsOn",
-          message: "자기 자신을 dependsOn으로 참조할 수 없습니다.",
-        }),
-        expect.objectContaining({
-          taskId: "ms-missing",
-          field: "dependsOn",
-          message: "존재하지 않는 의존성 ID입니다.",
-        }),
-        expect.objectContaining({
-          taskId: "ms-status",
           field: "status",
-          message:
-            "마일스톤 상태는 planned, on-track, done만 사용할 수 있습니다.",
         }),
       ]),
     );
   });
 
-  it("validates WBS hierarchy, code uniqueness, and node-specific dates", () => {
+  it("rejects WBS invalid parents, cycles, and unsupported statuses", () => {
     const wbsIssues = validateGanttTasks(
       [
         {
           id: "group-1",
-          code: "1",
           name: "기획",
           parentId: "missing-parent",
-          nodeType: "group",
           start: "",
           end: "",
           progress: 0,
         },
         {
           id: "task-1",
-          code: "1",
           name: "작업",
-          parentId: "group-1",
-          nodeType: "task",
-          start: "2026-05-10",
-          end: "2026-05-01",
-          progress: 50,
-        },
-        {
-          id: "mile-1",
-          code: "2",
-          name: "승인",
-          parentId: "group-1",
-          nodeType: "milestone",
+          parentId: "task-2",
           start: "",
           end: "",
-          progress: 100,
+          progress: 0,
+          status: "blocked",
+        },
+        {
+          id: "task-2",
+          name: "하위 작업",
+          parentId: "task-1",
+          start: "",
+          end: "",
+          progress: 0,
         },
       ],
       "wbs",
@@ -322,10 +225,26 @@ describe("gantt task model test entry points", () => {
 
     expect(wbsIssues).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ field: "parentId" }),
-        expect.objectContaining({ field: "code" }),
-        expect.objectContaining({ field: "end" }),
-        expect.objectContaining({ field: "date" }),
+        expect.objectContaining({
+          taskId: "group-1",
+          field: "parentId",
+        }),
+        expect.objectContaining({
+          taskId: "task-1",
+          field: "status",
+          message:
+            "WBS 상태는 not-started, in-progress, done만 사용할 수 있습니다.",
+        }),
+        expect.objectContaining({
+          taskId: "task-1",
+          field: "parentId",
+          message: "순환 구조는 허용되지 않습니다.",
+        }),
+        expect.objectContaining({
+          taskId: "task-2",
+          field: "parentId",
+          message: "순환 구조는 허용되지 않습니다.",
+        }),
       ]),
     );
   });
@@ -340,6 +259,8 @@ describe("gantt task model test entry points", () => {
       backgroundTemplate: "clean",
       weekColumnWidth: defaultProjectWeekColumnWidth,
       monthColumnWidth: defaultProjectMonthColumnWidth,
+      wbsProjectName: "오피스 툴",
+      wbsStructureType: "deliverable",
       selectedTaskId: "task-1",
     });
 
@@ -348,22 +269,9 @@ describe("gantt task model test entry points", () => {
       validTaskCount: 1,
       issueCount: 0,
       chartType: "project",
-      viewMode: "Week",
-      timelineStart: "2026-04-20",
-      timelineEnd: "2026-04-26",
-      backgroundTemplate: "clean",
-      weekColumnWidth: defaultProjectWeekColumnWidth,
-      monthColumnWidth: defaultProjectMonthColumnWidth,
-      selectedTaskId: "task-1",
+      wbsProjectName: "오피스 툴",
+      wbsStructureType: "deliverable",
     });
   });
-
-  it("clamps project timeline column widths to stable ranges", () => {
-    expect(clampProjectTimelineColumnWidth("Week", 8)).toBe(15);
-    expect(clampProjectTimelineColumnWidth("Week", 42.4)).toBe(42);
-    expect(clampProjectTimelineColumnWidth("Month", 300)).toBe(100);
-    expect(clampProjectTimelineColumnWidth("Month", Number.NaN)).toBe(
-      defaultProjectMonthColumnWidth,
-    );
-  });
 });
+

@@ -30,9 +30,10 @@
 
 ## 현재 범위
 
-- 구현됨: Next.js App Router, TypeScript, 홈 허브, 간트 에디터, tool registry, sample task model
+- 구현됨: Next.js App Router, TypeScript, 홈 허브, 간트 에디터, 마인드맵 에디터, tool registry
 - 간트 MVP: 타입 선택, 날짜 단위/표시 범위 선택, Frappe Gantt preview, task 추가/수정/삭제, validation, PNG export, opt-in debug mode
-- 이후 확장: 담당자별, baseline, critical path 간트 타입
+- 마인드맵 MVP: Mind Elixir preview, 계층 outline 편집, 색상 선택 dialog, PNG export, opt-in debug mode
+- 이후 확장: 담당자별, baseline, critical path 간트 타입과 다른 구조형 도구
 
 ## 기술 개요
 

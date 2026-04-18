@@ -8,8 +8,8 @@ export default function HomePage() {
         <div className="eyebrow">문서용 시각화 허브</div>
         <h1 id="home-title">오피스 문서에 바로 쓰는 시각화 도구</h1>
         <p>
-          지금은 실행 골격 단계입니다. 첫 활성 도구는 간트 차트이며, 나머지
-          도구는 plugin 확장 후보로 표시합니다.
+          지금은 실행 골격 단계입니다. 간트 차트와 마인드맵이 먼저 열려 있고,
+          나머지 도구는 plugin 확장 후보로 표시합니다.
         </p>
       </section>
 

@@ -21,5 +21,9 @@ export default async function LegacyToolPage({ params }: LegacyToolPageProps) {
     redirect("/gantt");
   }
 
+  if (toolId === "mindmap") {
+    redirect("/mindmap");
+  }
+
   notFound();
 }

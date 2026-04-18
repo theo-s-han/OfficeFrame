@@ -4,16 +4,17 @@
 
 1. 홈
 2. 간트 에디터
+3. 마인드맵 에디터
 
 ## 1. 홈
 
 ### 목적
 
-사용자가 현재 제공되는 문서 시각화 도구를 빠르게 파악하고 간트 에디터로 진입한다.
+사용자가 현재 제공되는 문서 시각화 도구를 빠르게 파악하고 각 에디터로 진입한다.
 
 ### 성공 기준
 
-- 간트 차트 카드만 우선 진입점으로 보인다.
+- 간트 차트와 마인드맵 카드가 우선 진입점으로 보인다.
 - 준비 중인 도구는 실제 기능처럼 오해되지 않는다.
 
 ## 2. 간트 에디터
@@ -79,13 +80,14 @@ Roadmap형과 진행률 추적형은 제공하지 않는다.
 
 ### WBS/단계형 UX
 
-- 입력 필드: id, code, name, parentId, nodeType, start, end, date, progress, owner, stage, dependsOn, notes, open
-- `nodeType=group`은 날짜 없이 계층 row로 입력할 수 있다.
-- `nodeType=task`는 start/end/progress를 입력한다.
-- `nodeType=milestone`은 date만 입력한다.
-- parentId는 기존 row 목록에서 선택할 수 있다.
-- interactive preview는 jsGanttImproved schedule renderer를 사용한다.
-- document preview는 Mermaid TreeView와 Mermaid Mindmap을 분리해 보여준다.
+- 상단에 프로젝트명과 구조 유형을 둔다.
+- 구조 유형은 산출물형(Deliverable-based)과 단계형(Phase-based) 중 하나를 선택한다.
+- 각 행의 사용자 입력 필드는 항목명, 상위 항목, 담당자, 상태, 설명만 노출한다.
+- `id`, `parentId`, `wbsCode`, depth, sortOrder 같은 내부 구조 값은 UI에 노출하지 않는다.
+- 상위 항목은 기존 항목 목록에서 선택하는 드롭다운으로 입력한다.
+- preview는 react-d3-tree 기반 WBS Tree 1개만 사용한다.
+- 각 노드에는 프로젝트명, 자동 생성된 WBS 코드, 계층 구조, 선택적 담당자/상태 배지가 문서형 카드로 보인다.
+- 날짜, 진행률 막대, dependency line, renderer 이름은 WBS 화면에 노출하지 않는다.
 
 ### 날짜 범위
 
@@ -99,7 +101,7 @@ Roadmap형과 진행률 추적형은 제공하지 않는다.
 - 잘못된 row는 preview 반영 전에 제외한다.
 - 오류는 row 아래에 표시한다.
 - 마일스톤형은 `YYYY-MM-DD` date 필수, id unique, self dependency 금지, dependsOn 유효성, 순환 의존성, status 허용값을 검증한다.
-- WBS형은 id unique, parentId 존재, code unique, leaf task start/end, end >= start, milestone date를 검증한다.
+- WBS형은 id unique, 항목명 필수, parentId 존재, 자기 자신 parent 지정 금지, 순환 계층 금지, 허용되지 않은 상태값 금지를 검증한다.
 
 ### Debug Mode
 
@@ -119,3 +121,46 @@ Roadmap형과 진행률 추적형은 제공하지 않는다.
 - 타입 전환 시 입력 필드와 preview가 타입 목적에 맞게 달라진다.
 - jsGanttImproved와 Mermaid 출력은 화면 컴포넌트가 아니라 adapter를 통해 이어진다.
 - 이미지로 내보내기 버튼은 validation 통과 및 preview 존재 시만 사용할 수 있다.
+- WBS형 PNG export는 preview와 동일한 단일 Tree surface만 저장한다.
+
+## 3. 마인드맵 에디터
+
+### 목적
+
+사용자가 계층 구조를 빠르게 입력하고 preview를 확인한 뒤 문서용 PNG로 저장한다.
+
+### 레이아웃
+
+- 상단: 예시 데이터, 전체 초기화, 이미지로 내보내기 toolbar
+- 본문: 좌측 outline/입력, 우측 preview 1개
+- 우측 preview는 고정 높이 surface 안에서 렌더링되고, 마우스 이동/휠 확대를 지원한다.
+
+### 입력 UX
+
+- outline은 계층 들여쓰기로 구성한다.
+- 선택된 노드는 이름, 설명, 색상, 하위 노드 접힘 여부를 수정할 수 있다.
+- `하위 노드 추가`, `같은 레벨 추가`, `노드 삭제`, `맞춤 보기` 액션을 제공한다.
+- 루트 노드는 삭제하지 않는다.
+- 색상 선택은 기존 간트와 같은 preset + color input + HEX dialog 방식을 사용한다.
+
+### Preview UX
+
+- renderer는 `Mind Elixir` 단일 preview만 사용한다.
+- renderer 이름, raw 데이터, 개발자 용어는 화면에 노출하지 않는다.
+- 첫 진입 sample은 3~5개 상위 브랜치와 2~3단계 깊이로 바로 그럴듯하게 보여야 한다.
+- root는 중립색, 주요 브랜치는 Enterprise Light palette, 하위 노드는 tint 배경으로 읽기 쉽게 구성한다.
+
+### Validation
+
+- 이름(topic)은 빈 값으로 둘 수 없다.
+- 색상은 `#RRGGBB` 형식만 허용한다.
+- 루트 삭제는 막는다.
+
+### 이미지 출력
+
+- `이미지로 내보내기`는 현재 preview surface만 PNG로 저장한다.
+- 편집 패널과 toolbar는 export 대상에서 제외한다.
+
+### Debug Mode
+
+- `?debug=mindmap` 또는 `localStorage.officeTool.mindmap.debug=true`일 때만 주요 preview/export 이벤트를 기록한다.

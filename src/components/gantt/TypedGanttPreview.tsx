@@ -1,43 +1,37 @@
 "use client";
 
 import { useMemo } from "react";
-import { JsGanttAdapterPreview } from "./JsGanttAdapterPreview";
 import { MermaidAdapterPreview } from "./MermaidAdapterPreview";
-import {
-  createMilestoneMermaidTimeline,
-  createWbsJsGanttRows,
-  createWbsMermaidMindmap,
-  createWbsMermaidTreeView,
-} from "@/lib/gantt/rendererAdapters";
-import type { GanttChartType, GanttTask } from "@/lib/gantt/taskModel";
+import { WbsTreePreview } from "./WbsTreePreview";
+import { createMilestoneMermaidTimeline } from "@/lib/gantt/rendererAdapters";
+import type {
+  GanttChartType,
+  GanttTask,
+  WbsStructureType,
+} from "@/lib/gantt/taskModel";
 
 type TypedGanttPreviewProps = {
   chartType: Exclude<GanttChartType, "project">;
   debugEnabled: boolean;
+  onSelectTask: (taskId: string) => void;
+  selectedTaskId?: string;
   tasks: GanttTask[];
+  wbsProjectName: string;
+  wbsStructureType: WbsStructureType;
 };
 
 export function TypedGanttPreview({
   chartType,
   debugEnabled,
+  onSelectTask,
+  selectedTaskId,
   tasks,
+  wbsProjectName,
+  wbsStructureType,
 }: TypedGanttPreviewProps) {
   const milestonePreview = useMemo(
     () =>
       chartType === "milestones" ? createMilestoneMermaidTimeline(tasks) : null,
-    [chartType, tasks],
-  );
-  const wbsPreview = useMemo(
-    () =>
-      chartType === "wbs"
-        ? {
-            jsGantt: createWbsJsGanttRows(tasks),
-            mermaid: [
-              createWbsMermaidTreeView(tasks),
-              createWbsMermaidMindmap(tasks),
-            ],
-          }
-        : null,
     [chartType, tasks],
   );
 
@@ -63,26 +57,13 @@ export function TypedGanttPreview({
     );
   }
 
-  if (!wbsPreview) {
-    return null;
-  }
-
   return (
-    <div className="typed-gantt-preview typed-gantt-wbs">
-      <div className="adapter-preview-grid">
-        <JsGanttAdapterPreview
-          adapterResult={wbsPreview.jsGantt}
-          debugEnabled={debugEnabled}
-          title="WBS 일정표"
-        />
-        {wbsPreview.mermaid.map((adapterResult) => (
-          <MermaidAdapterPreview
-            adapterResult={adapterResult}
-            debugEnabled={debugEnabled}
-            key={`${adapterResult.kind}-${adapterResult.title}`}
-          />
-        ))}
-      </div>
-    </div>
+    <WbsTreePreview
+      onSelectTask={onSelectTask}
+      projectName={wbsProjectName}
+      selectedTaskId={selectedTaskId}
+      structureType={wbsStructureType}
+      tasks={tasks}
+    />
   );
 }

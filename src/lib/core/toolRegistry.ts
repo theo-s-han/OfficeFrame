@@ -24,9 +24,9 @@ export const toolRegistry = [
     id: "mindmap",
     name: "마인드맵",
     description: "아이디어와 구조를 계층적으로 정리",
-    href: "#",
+    href: "/mindmap",
     shortCode: "MM",
-    status: "placeholder",
+    status: "active",
     order: 2,
   },
   {

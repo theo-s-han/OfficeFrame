@@ -1,3 +1,5 @@
+@import "mind-elixir/style.css";
+
 :root {
   --color-page: #f6f7f4;
   --color-surface: #ffffff;
@@ -531,7 +533,19 @@ button:disabled {
 }
 
 .task-editor-row.type-wbs {
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.wbs-editor-meta {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin-bottom: 16px;
+}
+
+.wbs-editor-meta label {
+  display: grid;
+  gap: 6px;
 }
 
 .task-editor-row label {
@@ -1229,6 +1243,90 @@ button:disabled {
   background: var(--gantt-background);
 }
 
+.typed-gantt-preview.typed-gantt-wbs {
+  padding: 0;
+  background: transparent;
+}
+
+.wbs-tree-surface {
+  min-height: 560px;
+  height: min(72vh, 640px);
+  overflow: hidden;
+  border: 1px solid var(--gantt-row-divider);
+  border-radius: 8px;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--gantt-surface) 78%, white),
+      var(--gantt-background)
+    );
+}
+
+.wbs-tree-canvas,
+.wbs-tree-canvas > div,
+.wbs-tree-canvas svg {
+  width: 100%;
+  height: 100%;
+}
+
+.wbs-tree-canvas svg {
+  cursor: grab;
+}
+
+.wbs-tree-canvas svg:active {
+  cursor: grabbing;
+}
+
+.wbs-tree-link {
+  fill: none;
+  stroke: var(--gantt-dependency-line);
+  stroke-linecap: round;
+  stroke-width: 1.4px;
+}
+
+.wbs-tree-node {
+  cursor: pointer;
+}
+
+.wbs-tree-node-card,
+.wbs-tree-node-shadow {
+  transition: transform 140ms ease, stroke 140ms ease, filter 140ms ease;
+}
+
+.wbs-tree-node.is-selected .wbs-tree-node-card {
+  filter: drop-shadow(0 10px 18px rgba(91, 110, 225, 0.12));
+}
+
+.wbs-tree-node-title,
+.wbs-tree-node-meta,
+.wbs-tree-node-kind,
+.wbs-tree-node-owner,
+.wbs-tree-status-text,
+.wbs-tree-node-notes {
+  font-family: Arial, "Noto Sans KR", system-ui, sans-serif;
+}
+
+.wbs-tree-node-title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.wbs-tree-node-meta,
+.wbs-tree-node-kind,
+.wbs-tree-node-owner,
+.wbs-tree-node-notes {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.wbs-tree-status-text {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-anchor: middle;
+}
+
 .adapter-preview-grid {
   display: grid;
   gap: 16px;
@@ -1549,6 +1647,169 @@ button:disabled {
   background: var(--gantt-task-2);
 }
 
+.mindmap-editor-shell {
+  margin-top: 22px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.mindmap-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 400px) minmax(0, 1fr);
+  min-height: 0;
+}
+
+.mindmap-edit-panel,
+.mindmap-preview-panel {
+  min-width: 0;
+  padding: 24px;
+}
+
+.mindmap-edit-panel {
+  border-right: 1px solid var(--color-border);
+}
+
+.mindmap-edit-panel h2,
+.mindmap-preview-panel h2 {
+  margin: 8px 0 10px;
+  font-size: 24px;
+}
+
+.mindmap-node-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.mindmap-outline {
+  display: grid;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.mindmap-outline-row {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #fbfcfb;
+  text-align: left;
+}
+
+.mindmap-outline-row[aria-pressed="true"] {
+  border-color: rgba(20, 116, 95, 0.48);
+  background: #eef5f1;
+}
+
+.mindmap-outline-indent {
+  display: inline-block;
+  height: 1px;
+}
+
+.mindmap-outline-color {
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgba(32, 37, 34, 0.18);
+  border-radius: 4px;
+}
+
+.mindmap-outline-topic {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.mindmap-outline-meta {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mindmap-node-editor {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.mindmap-node-editor label {
+  display: grid;
+  gap: 6px;
+}
+
+.mindmap-node-editor label span {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mindmap-node-editor input,
+.mindmap-node-editor textarea {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--color-text);
+  background: white;
+}
+
+.mindmap-node-editor textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.mindmap-preview-surface {
+  margin-top: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+}
+
+.mindmap-render-target,
+.mindmap-render-target .map-container {
+  height: 620px;
+  background: white;
+}
+
+.mindmap-render-target .map-container {
+  outline: none;
+}
+
+.mindmap-render-target .map-canvas {
+  min-width: 100%;
+  min-height: 100%;
+}
+
+.mindmap-render-target .selected {
+  box-shadow: 0 0 0 2px rgba(91, 110, 225, 0.16);
+}
+
+.mindmap-preview-placeholder {
+  display: grid;
+  align-content: center;
+  min-height: 360px;
+  padding: 28px;
+  color: var(--color-muted);
+  background: #fbfcfb;
+}
+
 @media (max-width: 980px) {
   .site-header {
     padding: 16px 24px;
@@ -1567,8 +1828,14 @@ button:disabled {
 
   .tool-grid,
   .editor-layout,
-  .chart-type-selector {
+  .chart-type-selector,
+  .mindmap-layout {
     grid-template-columns: 1fr;
+  }
+
+  .mindmap-edit-panel {
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
   }
 
   .edit-panel-heading {
@@ -1576,7 +1843,8 @@ button:disabled {
     flex-direction: column;
   }
 
-  .task-editor-row {
+  .task-editor-row,
+  .mindmap-node-editor {
     grid-template-columns: 1fr;
   }
 

@@ -55,13 +55,28 @@ npm run build
 - 마일스톤형 status는 별도 row가 아니라 badge/text 정보로만 보이고 `planned/on-track/done`만 선택된다.
 - 마일스톤형 validation은 날짜 형식, self dependency, 존재하지 않는 dependency, 순환 dependency, 허용되지 않은 status를 즉시 보여준다.
 - 마일스톤형은 Mermaid Timeline preview 1개만 보여주고 jsGantt milestone preview는 노출하지 않는다.
-- WBS형은 id/code/name/parentId/nodeType/start/end/date/progress/owner/stage/dependsOn/notes/open 입력을 제공한다.
-- WBS형은 group/task/milestone nodeType에 따라 필요한 날짜 입력이 달라진다.
-- WBS형은 jsGanttImproved schedule preview, Mermaid TreeView, Mermaid Mindmap을 분리해 보여준다.
+- WBS형은 프로젝트명/구조 유형/항목명/상위 항목/담당자/상태/설명 입력만 제공한다.
+- WBS형은 id, parentId, WBS 코드 같은 내부 값이 사용자 입력 폼에 노출되지 않는다.
+- WBS형은 react-d3-tree 기반 WBS Tree preview 1개만 보여준다.
+- WBS형은 상위 항목 선택에서 자기 자신과 하위 항목을 부모로 고를 수 없다.
+- WBS형은 자동 생성된 WBS 코드와 계층 카드가 문서형 결과로 보이고, PNG export도 같은 surface만 저장한다.
 - `이미지로 내보내기`는 현재 차트 영역만 PNG로 바로 다운로드한다.
 - DOM 캡처가 지연돼도 canvas fallback 이미지가 생성된다.
 - debug mode가 꺼진 일반 실행에서는 debug log가 출력되지 않는다.
 - `?debug=gantt` 또는 `window.__OFFICE_TOOL_GANTT_DEBUG__`에서 주요 event를 추적할 수 있다.
+
+## 마인드맵 수동 검증
+
+- `/mindmap` 페이지가 렌더링된다.
+- 홈에서 마인드맵 카드가 활성 상태로 보이고 `/mindmap`으로 이동한다.
+- 예시 데이터 진입 시 3~5개 상위 브랜치가 자연스럽게 보인다.
+- 좌측 outline에서 노드를 선택하면 우측 preview의 같은 노드가 선택된다.
+- `하위 노드 추가`, `같은 레벨 추가`, `노드 삭제`가 의도한 계층에 반영된다.
+- 루트 노드 삭제는 막힌다.
+- 이름(topic) 빈 값과 잘못된 색상은 즉시 에러로 보인다.
+- 색상 선택 dialog의 preset, color input, HEX 입력이 모두 동작한다.
+- `이미지로 내보내기`는 preview와 동일한 마인드맵 surface를 PNG로 저장한다.
+- `?debug=mindmap` 또는 `window.__OFFICE_TOOL_MINDMAP_DEBUG__`에서 주요 event를 추적할 수 있다.
 
 ## 완료 보고 형식
 

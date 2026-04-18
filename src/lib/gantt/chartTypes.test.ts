@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   createEmptyTaskForChartType,
   ganttChartTypes,
+  getDefaultWbsProjectName,
+  getDefaultWbsStructureType,
   getPreviewTasksForChartType,
   getSampleTasksForChartType,
 } from "./chartTypes";
 
 describe("gantt chart type presets", () => {
-  it("removes roadmap and progress tracking type presets", () => {
+  it("keeps only project, milestone, and WBS presets", () => {
     expect(ganttChartTypes.map((type) => type.id)).toEqual([
       "project",
       "milestones",
@@ -42,30 +44,25 @@ describe("gantt chart type presets", () => {
     });
   });
 
-  it("uses a compact milestone-only sample and weekly default view", () => {
-    const milestoneType = ganttChartTypes.find(
-      (type) => type.id === "milestones",
-    );
-    const sample = getSampleTasksForChartType("milestones");
+  it("uses the new WBS Tree copy and sample data", () => {
+    const wbsType = ganttChartTypes.find((type) => type.id === "wbs");
+    const sample = getSampleTasksForChartType("wbs");
 
-    expect(milestoneType?.defaultViewMode).toBe("Week");
-    expect(milestoneType?.previewTitle).toBe("마일스톤 흐름");
-    expect(milestoneType?.dependenciesLabel).toBe("이전 단계");
-    expect(sample).toHaveLength(8);
-    expect(sample[0]).toMatchObject({
-      id: "ms-kickoff",
-      date: "2026-04-20",
-      section: "기획",
-      status: "done",
-      dependsOn: [],
+    expect(wbsType).toMatchObject({
+      name: "WBS Tree",
+      editorTitle: "WBS Tree 입력",
+      previewTitle: "WBS Tree preview",
+      dependenciesLabel: "상위 항목",
     });
-    expect(sample[1].date).toBe("2026-04-27");
-    expect(sample.at(-1)).toMatchObject({
-      id: "ms-release",
-      date: "2026-06-10",
-      section: "릴리즈",
-      status: "planned",
-      dependsOn: ["ms-qa"],
+    expect(sample).toHaveLength(9);
+    expect(sample[0]).toMatchObject({
+      id: "wbs-discovery",
+      name: "요구 분석",
+      status: "in-progress",
+    });
+    expect(sample[1]).toMatchObject({
+      parentId: "wbs-discovery",
+      status: "done",
     });
   });
 
@@ -73,57 +70,8 @@ describe("gantt chart type presets", () => {
     const firstRead = getSampleTasksForChartType("wbs");
 
     firstRead[0].name = "변경된 이름";
-    firstRead[1].dependsOn?.push("mutated");
 
-    expect(getSampleTasksForChartType("wbs")[0].name).toBe("기획");
-    expect(getSampleTasksForChartType("wbs")[1].dependsOn).toEqual([]);
-  });
-
-  it("adds code and owner context to WBS preview labels", () => {
-    const previewTasks = getPreviewTasksForChartType(
-      [
-        {
-          id: "wbs-1",
-          code: "2.1",
-          name: "입력 스키마",
-          parentId: "",
-          nodeType: "task",
-          start: "2026-04-24",
-          end: "2026-04-30",
-          progress: 60,
-          owner: "UX",
-        },
-      ],
-      "wbs",
-    );
-
-    expect(previewTasks[0]).toMatchObject({
-      name: "2.1 입력 스키마 · UX",
-      customClass: "wbs-task-row",
-    });
-  });
-
-  it("marks basic project preview bars as colorable", () => {
-    const previewTasks = getPreviewTasksForChartType(
-      [
-        {
-          id: "task-1",
-          name: "일정 정리",
-          start: "2026-04-20",
-          end: "2026-04-24",
-          progress: 30,
-          owner: "PM",
-          color: "#C75D4F",
-        },
-      ],
-      "project",
-    );
-
-    expect(previewTasks[0]).toMatchObject({
-      name: "일정 정리 · PM",
-      color: "#C75D4F",
-      customClass: "project-bar-color",
-    });
+    expect(getSampleTasksForChartType("wbs")[0].name).toBe("요구 분석");
   });
 
   it("creates type-aware empty tasks for editor tests", () => {
@@ -136,11 +84,16 @@ describe("gantt chart type presets", () => {
     });
 
     expect(createEmptyTaskForChartType([], "wbs")).toMatchObject({
-      name: "새 작업",
-      code: "1",
-      nodeType: "task",
-      dependsOn: [],
-      open: true,
+      name: "새 항목",
+      parentId: "",
+      status: "not-started",
+      notes: "",
     });
   });
+
+  it("provides WBS defaults through helpers", () => {
+    expect(getDefaultWbsProjectName()).toBe("오피스 툴 구축");
+    expect(getDefaultWbsStructureType()).toBe("deliverable");
+  });
 });
+

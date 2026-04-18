@@ -19,6 +19,7 @@ import type {
   GanttChartType,
   GanttTask,
   GanttViewMode,
+  WbsStructureType,
 } from "@/lib/gantt/taskModel";
 import { isValidDateObject } from "@/lib/gantt/taskModel";
 import { TypedGanttPreview } from "./TypedGanttPreview";
@@ -31,6 +32,9 @@ type GanttChartPreviewProps = {
   timelineEnd: string;
   weekColumnWidth: number;
   monthColumnWidth: number;
+  selectedTaskId?: string;
+  wbsProjectName: string;
+  wbsStructureType: WbsStructureType;
   debugEnabled: boolean;
   onDateChange: (taskId: string, start: Date, end: Date) => void;
   onProgressChange: (taskId: string, progress: number) => void;
@@ -255,6 +259,9 @@ export function GanttChartPreview({
   timelineEnd,
   weekColumnWidth,
   monthColumnWidth,
+  selectedTaskId,
+  wbsProjectName,
+  wbsStructureType,
   debugEnabled,
   onDateChange,
   onProgressChange,
@@ -496,7 +503,11 @@ export function GanttChartPreview({
       <TypedGanttPreview
         chartType={chartType}
         debugEnabled={debugEnabled}
+        onSelectTask={onSelectTask}
+        selectedTaskId={selectedTaskId}
         tasks={tasks}
+        wbsProjectName={wbsProjectName}
+        wbsStructureType={wbsStructureType}
       />
     );
   }

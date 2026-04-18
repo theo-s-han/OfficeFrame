@@ -3,12 +3,15 @@ import { defaultGanttPalette } from "./theme";
 export type GanttViewMode = "Day" | "Week" | "Month" | "Quarter";
 export type GanttDateUnit = "day" | "week" | "month" | "quarter";
 export type GanttChartType = "project" | "milestones" | "wbs";
+export type WbsStructureType = "deliverable" | "phase";
 export type GanttTaskStatus =
   | "planned"
   | "on-track"
   | "at-risk"
   | "blocked"
-  | "done";
+  | "done"
+  | "not-started"
+  | "in-progress";
 export type GanttTaskColor = string;
 export type GanttBackgroundTemplate =
   | "clean"
@@ -54,6 +57,8 @@ export type GanttEditorShellState = {
   backgroundTemplate: GanttBackgroundTemplate;
   weekColumnWidth: number;
   monthColumnWidth: number;
+  wbsProjectName: string;
+  wbsStructureType: WbsStructureType;
   selectedTaskId?: string;
 };
 
@@ -98,6 +103,8 @@ export type GanttDebugSnapshot = {
   backgroundTemplate: GanttBackgroundTemplate;
   weekColumnWidth: number;
   monthColumnWidth: number;
+  wbsProjectName: string;
+  wbsStructureType: WbsStructureType;
   selectedTaskId?: string;
   tasks: Array<{
     id: string;
@@ -148,6 +155,8 @@ export const ganttTaskStatusOptions: Array<{
   { value: "on-track", label: "정상" },
   { value: "at-risk", label: "위험" },
   { value: "blocked", label: "차단" },
+  { value: "not-started", label: "시작 전" },
+  { value: "in-progress", label: "진행 중" },
   { value: "done", label: "완료" },
 ];
 
@@ -157,6 +166,23 @@ export const milestoneTaskStatusOptions = ganttTaskStatusOptions.filter(
     option.value === "on-track" ||
     option.value === "done",
 );
+
+export const wbsTaskStatusOptions: Array<{
+  value: Extract<GanttTaskStatus, "not-started" | "in-progress" | "done">;
+  label: string;
+}> = [
+  { value: "not-started", label: "시작 전" },
+  { value: "in-progress", label: "진행 중" },
+  { value: "done", label: "완료" },
+];
+
+export const wbsStructureTypeOptions: Array<{
+  value: WbsStructureType;
+  label: string;
+}> = [
+  { value: "deliverable", label: "산출물형" },
+  { value: "phase", label: "단계형" },
+];
 
 export const ganttTaskColorOptions: Array<{
   value: GanttTaskColor;
@@ -623,6 +649,27 @@ function validateWbsTask(task: GanttTask): GanttValidationIssue[] {
   return issues;
 }
 
+function validateWbsTreeTask(task: GanttTask): GanttValidationIssue[] {
+  const issues = validateCommonTaskIdentity(task);
+
+  if (
+    task.status &&
+    !wbsTaskStatusOptions.some((option) => option.value === task.status)
+  ) {
+    issues.push(
+      createIssue(
+        task,
+        "status",
+        "WBS 상태는 not-started, in-progress, done만 사용할 수 있습니다.",
+      ),
+    );
+  }
+
+  return issues;
+}
+
+void validateWbsTask;
+
 function findDuplicateValues<T extends string>(values: T[]): Map<T, number> {
   const counts = new Map<T, number>();
 
@@ -681,14 +728,90 @@ function findDependencyCycleTaskIds(tasks: GanttTask[]): Set<string> {
   return cycleTaskIds;
 }
 
+function findHierarchyCycleTaskIds(tasks: GanttTask[]): Set<string> {
+  const parentMap = new Map(tasks.map((task) => [task.id, task.parentId ?? ""]));
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  const cycleTaskIds = new Set<string>();
+
+  function visit(taskId: string, path: string[]): void {
+    if (visiting.has(taskId)) {
+      const cycleStartIndex = path.indexOf(taskId);
+      path.slice(cycleStartIndex).forEach((id) => cycleTaskIds.add(id));
+      cycleTaskIds.add(taskId);
+      return;
+    }
+
+    if (visited.has(taskId)) {
+      return;
+    }
+
+    visiting.add(taskId);
+    const parentId = parentMap.get(taskId);
+
+    if (parentId && parentMap.has(parentId)) {
+      visit(parentId, [...path, parentId]);
+    }
+
+    visiting.delete(taskId);
+    visited.add(taskId);
+  }
+
+  parentMap.forEach((_, taskId) => visit(taskId, [taskId]));
+
+  return cycleTaskIds;
+}
+
+function validateWbsTaskCollection(tasks: GanttTask[]): GanttValidationIssue[] {
+  const issues: GanttValidationIssue[] = [];
+  const duplicateIds = findDuplicateValues(tasks.map((task) => task.id.trim()));
+  const ids = new Set(tasks.map((task) => task.id));
+  const hierarchyCycleTaskIds = findHierarchyCycleTaskIds(tasks);
+
+  tasks.forEach((task) => {
+    if (duplicateIds.has(task.id.trim())) {
+      issues.push(createIssue(task, "id", "id는 중복될 수 없습니다."));
+    }
+
+    if (task.parentId && !ids.has(task.parentId)) {
+      issues.push(
+        createIssue(task, "parentId", "존재하는 상위 항목을 선택하세요."),
+      );
+    }
+
+    if (task.parentId && task.parentId === task.id) {
+      issues.push(
+        createIssue(
+          task,
+          "parentId",
+          "자기 자신을 상위 항목으로 선택할 수 없습니다.",
+        ),
+      );
+    }
+
+    if (hierarchyCycleTaskIds.has(task.id)) {
+      issues.push(
+        createIssue(task, "parentId", "순환 구조는 허용되지 않습니다."),
+      );
+    }
+  });
+
+  return issues;
+}
+
 function validateTaskCollection(
   tasks: GanttTask[],
   chartType: GanttChartType,
 ): GanttValidationIssue[] {
+  if (chartType === "wbs") {
+    return validateWbsTaskCollection(tasks);
+  }
+
   const issues: GanttValidationIssue[] = [];
   const duplicateIds = findDuplicateValues(tasks.map((task) => task.id.trim()));
+  const legacyWbsValidationEnabled = tasks.length < 0;
 
-  if (chartType === "milestones" || chartType === "wbs") {
+  if (chartType === "milestones") {
     tasks.forEach((task) => {
       if (duplicateIds.has(task.id.trim())) {
         issues.push(createIssue(task, "id", "id는 중복될 수 없습니다."));
@@ -696,7 +819,7 @@ function validateTaskCollection(
     });
   }
 
-  if (chartType === "wbs") {
+  if (legacyWbsValidationEnabled) {
     const ids = new Set(tasks.map((task) => task.id));
     const duplicateCodes = findDuplicateValues(
       tasks.map((task) => task.code?.trim() ?? "").filter(Boolean),
@@ -715,7 +838,7 @@ function validateTaskCollection(
     });
   }
 
-  if (chartType === "milestones" || chartType === "wbs") {
+  if (chartType === "milestones") {
     const ids = new Set(tasks.map((task) => task.id));
     const cycleTaskIds = findDependencyCycleTaskIds(tasks);
 
@@ -759,7 +882,7 @@ export function validateGanttTask(
   }
 
   if (chartType === "wbs") {
-    return validateWbsTask(task);
+    return validateWbsTreeTask(task);
   }
 
   return validateProjectTask(task);
@@ -803,6 +926,8 @@ export function createGanttDebugSnapshot(
     backgroundTemplate: state.backgroundTemplate,
     weekColumnWidth: state.weekColumnWidth,
     monthColumnWidth: state.monthColumnWidth,
+    wbsProjectName: state.wbsProjectName,
+    wbsStructureType: state.wbsStructureType,
     selectedTaskId: state.selectedTaskId,
     tasks: state.tasks.map((task) => ({
       id: task.id,
