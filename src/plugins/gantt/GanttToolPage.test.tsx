@@ -3,15 +3,23 @@ import { describe, expect, it } from "vitest";
 import { GanttEditorShell } from "@/components/gantt/GanttEditorShell";
 
 describe("GanttEditorShell", () => {
-  it("renders the editable gantt MVP controls", () => {
+  it("renders the updated gantt toolbar and core controls", () => {
     render(<GanttEditorShell />);
 
     expect(screen.getByText("기본 일정표 preview")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "작업 추가" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "이미지 만들기" })).toBeEnabled();
     expect(
-      screen.getByRole("button", { name: "이미지 다운로드" }),
+      screen.getByRole("button", { name: "이미지로 내보내기" }),
     ).toBeEnabled();
+    expect(
+      screen.queryByRole("button", { name: "오늘로 이동" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "이미지 만들기" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "이미지 다운로드" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByLabelText("배경 템플릿")).toHaveValue("clean");
     expect(
       screen.getByRole("button", { name: "요구사항 정리 색상 선택" }),
@@ -29,20 +37,78 @@ describe("GanttEditorShell", () => {
     expect(screen.getByDisplayValue("새 작업")).toBeInTheDocument();
   });
 
-  it("changes task date inputs by selected date unit", () => {
+  it("keeps task and timeline inputs as full dates across view modes", () => {
     render(<GanttEditorShell />);
 
-    expect(screen.getByLabelText("요구사항 정리 시작")).toHaveValue("2026-W17");
+    expect(screen.getByLabelText("요구사항 정리 시작")).toHaveValue("2026-04-17");
+    expect(screen.getByLabelText("표시 시작")).toHaveValue("2026-04-13");
+    expect(screen.getByLabelText("표시 종료")).toHaveValue("2026-08-15");
 
     fireEvent.click(screen.getByRole("button", { name: "월 단위" }));
 
-    expect(screen.getByLabelText("요구사항 정리 시작")).toHaveValue("2026-04");
-    expect(screen.getByLabelText("표시 시작")).toHaveValue("2026-04");
+    expect(screen.getByLabelText("요구사항 정리 시작")).toHaveValue("2026-04-17");
+    expect(screen.getByLabelText("표시 시작")).toHaveValue("2026-04-13");
+    expect(screen.getByLabelText("표시 종료")).toHaveValue("2026-08-15");
 
     fireEvent.click(screen.getByRole("button", { name: "분기 단위" }));
 
-    expect(screen.getByLabelText("요구사항 정리 시작")).toHaveValue("2026-Q2");
-    expect(screen.getByLabelText("표시 종료")).toHaveValue("2026-Q2");
+    expect(screen.getByLabelText("요구사항 정리 시작")).toHaveValue("2026-04-17");
+    expect(screen.getByLabelText("표시 시작")).toHaveValue("2026-04-13");
+    expect(screen.getByLabelText("표시 종료")).toHaveValue("2026-08-15");
+  });
+
+  it("updates end automatically when start moves past it", () => {
+    render(<GanttEditorShell />);
+
+    fireEvent.change(screen.getByLabelText("간트 MVP 구현 시작"), {
+      target: { value: "2026-07-12" },
+    });
+
+    expect(screen.getByLabelText("간트 MVP 구현 시작")).toHaveValue("2026-07-12");
+    expect(screen.getByLabelText("간트 MVP 구현 종료")).toHaveValue("2026-07-12");
+  });
+
+  it("expands the visible timeline when a task extends beyond the current range", () => {
+    render(<GanttEditorShell />);
+
+    fireEvent.change(screen.getByLabelText("문서용 출력 확인 종료"), {
+      target: { value: "2026-08-31" },
+    });
+
+    expect(screen.getByLabelText("문서용 출력 확인 종료")).toHaveValue(
+      "2026-08-31",
+    );
+    expect(screen.getByLabelText("표시 종료")).toHaveValue("2026-08-31");
+  });
+
+  it("blocks an end date earlier than start and shows a toast", () => {
+    render(<GanttEditorShell />);
+
+    fireEvent.change(screen.getByLabelText("화면 구조 검토 종료"), {
+      target: { value: "2026-05-01" },
+    });
+
+    expect(screen.getByLabelText("화면 구조 검토 종료")).toHaveValue(
+      "2026-06-29",
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "종료일은 시작일보다 빠를 수 없습니다.",
+    );
+  });
+
+  it("shows project timeline interval sliders for week and month modes", () => {
+    render(<GanttEditorShell />);
+
+    expect(screen.getByLabelText("주 간격 조절")).toHaveValue("40");
+    fireEvent.change(screen.getByLabelText("주 간격 조절"), {
+      target: { value: "65" },
+    });
+    expect(screen.getByLabelText("주 간격 조절")).toHaveValue("65");
+    expect(screen.getByText("65px")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "월 단위" }));
+
+    expect(screen.getByLabelText("월 간격 조절")).toHaveValue("40");
   });
 
   it("removes roadmap and progress tracking buttons", () => {

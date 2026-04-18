@@ -273,7 +273,7 @@ export function getTimelineRangeForTasks(
 
     return {
       start: snapDateToUnit(today, viewMode, "start"),
-      end: snapDateToUnit(today, viewMode, "end"),
+      end: today,
     };
   }
 
@@ -281,7 +281,32 @@ export function getTimelineRangeForTasks(
 
   return {
     start: snapDateToUnit(sortedDates[0], viewMode, "start"),
-    end: snapDateToUnit(sortedDates[sortedDates.length - 1], viewMode, "end"),
+    end: sortedDates[sortedDates.length - 1],
+  };
+}
+
+export function getTaskDateBounds(tasks: GanttTask[]): TimelineRange | null {
+  const validDates = tasks
+    .flatMap((task) => [
+      task.start,
+      task.end,
+      task.baselineStart,
+      task.baselineEnd,
+    ])
+    .filter(
+      (value): value is string =>
+        typeof value === "string" && isValidDateInput(value),
+    );
+
+  if (validDates.length === 0) {
+    return null;
+  }
+
+  const sortedDates = [...validDates].sort(compareDateInputs);
+
+  return {
+    start: sortedDates[0],
+    end: sortedDates[sortedDates.length - 1],
   };
 }
 

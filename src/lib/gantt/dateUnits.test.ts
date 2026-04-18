@@ -47,9 +47,9 @@ describe("gantt date unit helpers", () => {
   it("derives timeline ranges from task dates instead of the current date", () => {
     expect(getTimelineRangeForTasks(tasks, "Quarter")).toEqual({
       start: "2026-04-01",
-      end: "2026-06-30",
+      end: "2026-05-12",
     });
-    expect(getFrappeRangeEnd("2026-06-30", "Quarter")).toBe("2026-09-30");
+    expect(getFrappeRangeEnd("2026-05-12", "Quarter")).toBe("2026-08-12");
   });
 
   it("creates quarter options around the selected range and task dates", () => {

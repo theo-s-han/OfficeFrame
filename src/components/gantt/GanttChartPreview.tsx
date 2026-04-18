@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  forwardRef,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type Gantt from "frappe-gantt";
 import type {
   FrappeGanttTask,
@@ -30,16 +23,14 @@ import type {
 import { isValidDateObject } from "@/lib/gantt/taskModel";
 import { TypedGanttPreview } from "./TypedGanttPreview";
 
-export type GanttChartPreviewHandle = {
-  scrollToToday: () => void;
-};
-
 type GanttChartPreviewProps = {
   tasks: GanttTask[];
   chartType: GanttChartType;
   viewMode: GanttViewMode;
   timelineStart: string;
   timelineEnd: string;
+  weekColumnWidth: number;
+  monthColumnWidth: number;
   debugEnabled: boolean;
   onDateChange: (taskId: string, start: Date, end: Date) => void;
   onProgressChange: (taskId: string, progress: number) => void;
@@ -132,7 +123,23 @@ function formatQuarter(date: Date): string {
   return `${Math.floor(date.getMonth() / 3) + 1}Q`;
 }
 
-function getQuarterViewMode(): FrappeGanttViewModeConfig {
+export function getDayViewMode(): FrappeGanttViewModeConfig {
+  return {
+    name: "Day",
+    padding: ["0d", "0d"],
+    step: "1d",
+    date_format: "YYYY-MM-DD",
+    lower_text: (date) => String(date.getDate()).padStart(2, "0"),
+    upper_text: (date, previousDate) =>
+      !previousDate || date.getMonth() !== previousDate.getMonth()
+        ? getMonthHeaderLabel(date)
+        : "",
+    thick_line: (date) => date.getDate() === 1,
+    snap_at: "1d",
+  };
+}
+
+export function getQuarterViewMode(): FrappeGanttViewModeConfig {
   return {
     name: "Quarter",
     padding: ["0d", "0d"],
@@ -144,46 +151,75 @@ function getQuarterViewMode(): FrappeGanttViewModeConfig {
       !previousDate || date.getFullYear() !== previousDate.getFullYear()
         ? `${date.getFullYear()}`
         : "",
-    thick_line: () => true,
+    thick_line: (date) => date.getMonth() === 0,
     snap_at: "30d",
   };
 }
 
-function getWeekViewMode(): FrappeGanttViewModeConfig {
+export function getWeekViewMode(
+  columnWidth: number,
+): FrappeGanttViewModeConfig {
   return {
     name: "Week",
     padding: ["0d", "0d"],
     step: "7d",
-    column_width: 96,
+    column_width: columnWidth,
     date_format: "YYYY-MM-DD",
     lower_text: (date) => getWeekOfMonthLabel(date),
     upper_text: (date, previousDate) =>
       !previousDate || date.getMonth() !== previousDate.getMonth()
         ? getMonthHeaderLabel(date)
         : "",
-    thick_line: (date) => date.getDate() >= 1 && date.getDate() <= 7,
+    thick_line: (date) => date.getDate() <= 7,
     upper_text_frequency: 4,
+    snap_at: "7d",
+  };
+}
+
+export function getMonthViewMode(
+  columnWidth: number,
+): FrappeGanttViewModeConfig {
+  return {
+    name: "Month",
+    padding: ["0m", "0m"],
+    step: "1m",
+    column_width: columnWidth,
+    date_format: "YYYY-MM",
+    lower_text: (date) => getMonthHeaderLabel(date),
+    upper_text: (date, previousDate) =>
+      !previousDate || date.getFullYear() !== previousDate.getFullYear()
+        ? `${date.getFullYear()}`
+        : "",
+    thick_line: (date) => date.getMonth() === 0,
     snap_at: "7d",
   };
 }
 
 function getFrappeViewModes(
   selectedViewMode: GanttViewMode,
+  weekColumnWidth: number,
+  monthColumnWidth: number,
 ): Array<FrappeGanttViewMode | FrappeGanttViewModeConfig> {
-  const weekViewMode = getWeekViewMode();
+  const dayViewMode = getDayViewMode();
+  const weekViewMode = getWeekViewMode(weekColumnWidth);
+  const monthViewMode = getMonthViewMode(monthColumnWidth);
   const quarterViewMode = getQuarterViewMode();
   const viewModes: Array<FrappeGanttViewMode | FrappeGanttViewModeConfig> = [
-    "Day",
+    dayViewMode,
     weekViewMode,
-    "Month",
+    monthViewMode,
     quarterViewMode,
   ];
   const selected =
-    selectedViewMode === "Week"
-      ? weekViewMode
-      : selectedViewMode === "Quarter"
-        ? quarterViewMode
-        : (selectedViewMode as FrappeGanttViewMode);
+    selectedViewMode === "Day"
+      ? dayViewMode
+      : selectedViewMode === "Week"
+        ? weekViewMode
+        : selectedViewMode === "Month"
+          ? monthViewMode
+          : selectedViewMode === "Quarter"
+            ? quarterViewMode
+            : (selectedViewMode as FrappeGanttViewMode);
 
   return [
     selected,
@@ -211,23 +247,19 @@ function applyTimelineRange(
   internalGantt.render();
 }
 
-export const GanttChartPreview = forwardRef<
-  GanttChartPreviewHandle,
-  GanttChartPreviewProps
->(function GanttChartPreview(
-  {
-    tasks,
-    chartType,
-    viewMode,
-    timelineStart,
-    timelineEnd,
-    debugEnabled,
-    onDateChange,
-    onProgressChange,
-    onSelectTask,
-  },
-  ref,
-) {
+export function GanttChartPreview({
+  tasks,
+  chartType,
+  viewMode,
+  timelineStart,
+  timelineEnd,
+  weekColumnWidth,
+  monthColumnWidth,
+  debugEnabled,
+  onDateChange,
+  onProgressChange,
+  onSelectTask,
+}: GanttChartPreviewProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const ganttRef = useRef<Gantt | null>(null);
   const dateChangeRef = useRef(onDateChange);
@@ -247,21 +279,18 @@ export const GanttChartPreview = forwardRef<
       ),
     [tasks],
   );
+  const projectColumnWidth =
+    viewMode === "Week"
+      ? weekColumnWidth
+      : viewMode === "Month"
+        ? monthColumnWidth
+        : undefined;
 
   useEffect(() => {
     dateChangeRef.current = onDateChange;
     progressChangeRef.current = onProgressChange;
     selectTaskRef.current = onSelectTask;
   }, [onDateChange, onProgressChange, onSelectTask]);
-
-  useImperativeHandle(ref, () => ({
-    scrollToToday() {
-      ganttRef.current?.scroll_current();
-      recordGanttDebugEvent(debugEnabled, "chart.scroll_today", {
-        taskCount: tasks.length,
-      });
-    },
-  }));
 
   useEffect(() => {
     let isMounted = true;
@@ -333,10 +362,16 @@ export const GanttChartPreview = forwardRef<
         clickTarget.addEventListener("pointerup", clickHandler, true);
         clickTarget.addEventListener("click", clickHandler, true);
 
-        const gantt = new FrappeGantt(wrapperRef.current, frappeTasks, {
+        const ganttOptions = {
           view_mode: viewMode,
-          view_modes: getFrappeViewModes(viewMode),
+          view_modes: getFrappeViewModes(
+            viewMode,
+            weekColumnWidth,
+            monthColumnWidth,
+          ),
+          column_width: projectColumnWidth,
           date_format: "YYYY-MM-DD",
+          holidays: {},
           infinite_padding: false,
           language: "ko",
           lines: "both",
@@ -406,7 +441,12 @@ export const GanttChartPreview = forwardRef<
           },
           popup: ({ task }) =>
             `<strong>${task.name}</strong><br />${task.start} - ${task.end}<br />${task.progress ?? 0}%`,
-        });
+        } as ConstructorParameters<typeof FrappeGantt>[2];
+        const gantt = new FrappeGantt(
+          wrapperRef.current,
+          frappeTasks,
+          ganttOptions,
+        );
         ganttRef.current = gantt;
         applyTimelineRange(gantt, timelineStart, timelineEnd, viewMode);
         applyProjectTaskColors(wrapperRef.current, tasks, chartType);
@@ -414,6 +454,7 @@ export const GanttChartPreview = forwardRef<
         recordGanttDebugEvent(debugEnabled, "chart.render", {
           chartType,
           taskCount: frappeTasks.length,
+          projectColumnWidth,
           timelineEnd,
           timelineStart,
           viewMode,
@@ -445,6 +486,9 @@ export const GanttChartPreview = forwardRef<
     taskDateTargets,
     taskSelectionIds,
     viewMode,
+    projectColumnWidth,
+    weekColumnWidth,
+    monthColumnWidth,
   ]);
 
   if (chartType !== "project") {
@@ -459,8 +503,11 @@ export const GanttChartPreview = forwardRef<
 
   return (
     <div className="gantt-preview" aria-label="간트 차트 preview">
-      <div className="gantt-preview-canvas" ref={wrapperRef} />
+      <div
+        className={`gantt-preview-canvas view-${viewMode.toLowerCase()}`}
+        ref={wrapperRef}
+      />
       {status ? <p className="gantt-preview-status">{status}</p> : null}
     </div>
   );
-});
+}

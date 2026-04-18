@@ -4,7 +4,10 @@ import {
   applyGanttDateChange,
   applyGanttProgressChange,
   applySafeGanttDatePatch,
+  clampProjectTimelineColumnWidth,
   createGanttDebugSnapshot,
+  defaultProjectMonthColumnWidth,
+  defaultProjectWeekColumnWidth,
   getValidPreviewTasks,
   isValidGanttTaskColor,
   isValidDateObject,
@@ -335,6 +338,8 @@ describe("gantt task model test entry points", () => {
       timelineStart: "2026-04-20",
       timelineEnd: "2026-04-26",
       backgroundTemplate: "clean",
+      weekColumnWidth: defaultProjectWeekColumnWidth,
+      monthColumnWidth: defaultProjectMonthColumnWidth,
       selectedTaskId: "task-1",
     });
 
@@ -347,7 +352,18 @@ describe("gantt task model test entry points", () => {
       timelineStart: "2026-04-20",
       timelineEnd: "2026-04-26",
       backgroundTemplate: "clean",
+      weekColumnWidth: defaultProjectWeekColumnWidth,
+      monthColumnWidth: defaultProjectMonthColumnWidth,
       selectedTaskId: "task-1",
     });
+  });
+
+  it("clamps project timeline column widths to stable ranges", () => {
+    expect(clampProjectTimelineColumnWidth("Week", 8)).toBe(15);
+    expect(clampProjectTimelineColumnWidth("Week", 42.4)).toBe(42);
+    expect(clampProjectTimelineColumnWidth("Month", 300)).toBe(100);
+    expect(clampProjectTimelineColumnWidth("Month", Number.NaN)).toBe(
+      defaultProjectMonthColumnWidth,
+    );
   });
 });

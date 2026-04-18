@@ -52,6 +52,8 @@ export type GanttEditorShellState = {
   timelineStart: string;
   timelineEnd: string;
   backgroundTemplate: GanttBackgroundTemplate;
+  weekColumnWidth: number;
+  monthColumnWidth: number;
   selectedTaskId?: string;
 };
 
@@ -94,6 +96,8 @@ export type GanttDebugSnapshot = {
   timelineStart: string;
   timelineEnd: string;
   backgroundTemplate: GanttBackgroundTemplate;
+  weekColumnWidth: number;
+  monthColumnWidth: number;
   selectedTaskId?: string;
   tasks: Array<{
     id: string;
@@ -125,6 +129,16 @@ const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const colorPattern = /^#[0-9a-fA-F]{6}$/;
 
 export const defaultGanttTaskColor = defaultGanttPalette.taskColors[0];
+export const defaultProjectWeekColumnWidth = 40;
+export const defaultProjectMonthColumnWidth = 40;
+export const projectWeekColumnWidthRange = {
+  min: 15,
+  max: 100,
+} as const;
+export const projectMonthColumnWidthRange = {
+  min: 15,
+  max: 100,
+} as const;
 
 export const ganttTaskStatusOptions: Array<{
   value: GanttTaskStatus;
@@ -222,6 +236,35 @@ export function clampProgress(progress: number): number {
   }
 
   return Math.min(100, Math.max(0, Math.round(progress)));
+}
+
+export function getProjectTimelineColumnWidthRange(
+  viewMode: GanttViewMode,
+): Readonly<{ min: number; max: number }> {
+  return viewMode === "Month"
+    ? projectMonthColumnWidthRange
+    : projectWeekColumnWidthRange;
+}
+
+export function getDefaultProjectTimelineColumnWidth(
+  viewMode: GanttViewMode,
+): number {
+  return viewMode === "Month"
+    ? defaultProjectMonthColumnWidth
+    : defaultProjectWeekColumnWidth;
+}
+
+export function clampProjectTimelineColumnWidth(
+  viewMode: GanttViewMode,
+  width: number,
+): number {
+  const range = getProjectTimelineColumnWidthRange(viewMode);
+
+  if (Number.isNaN(width)) {
+    return getDefaultProjectTimelineColumnWidth(viewMode);
+  }
+
+  return Math.min(range.max, Math.max(range.min, Math.round(width)));
 }
 
 export function formatDateForInput(date: Date): string {
@@ -758,6 +801,8 @@ export function createGanttDebugSnapshot(
     timelineStart: state.timelineStart,
     timelineEnd: state.timelineEnd,
     backgroundTemplate: state.backgroundTemplate,
+    weekColumnWidth: state.weekColumnWidth,
+    monthColumnWidth: state.monthColumnWidth,
     selectedTaskId: state.selectedTaskId,
     tasks: state.tasks.map((task) => ({
       id: task.id,

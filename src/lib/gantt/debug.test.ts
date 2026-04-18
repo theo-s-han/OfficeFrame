@@ -32,6 +32,8 @@ describe("gantt debug mode", () => {
         timelineStart: "2026-04-01",
         timelineEnd: "2026-04-30",
         backgroundTemplate: "clean",
+        weekColumnWidth: 96,
+        monthColumnWidth: 120,
         tasks: [],
       }),
     ).toEqual({
@@ -43,6 +45,8 @@ describe("gantt debug mode", () => {
       timelineStart: "2026-04-01",
       timelineEnd: "2026-04-30",
       backgroundTemplate: "clean",
+      weekColumnWidth: 96,
+      monthColumnWidth: 120,
     });
   });
 });

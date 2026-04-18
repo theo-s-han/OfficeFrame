@@ -71,6 +71,8 @@ export function createGanttDebugPayload(snapshot: GanttDebugSnapshot): {
   timelineStart: string;
   timelineEnd: string;
   backgroundTemplate: string;
+  weekColumnWidth: number;
+  monthColumnWidth: number;
   selectedTaskId?: string;
 } {
   return {
@@ -82,6 +84,8 @@ export function createGanttDebugPayload(snapshot: GanttDebugSnapshot): {
     timelineStart: snapshot.timelineStart,
     timelineEnd: snapshot.timelineEnd,
     backgroundTemplate: snapshot.backgroundTemplate,
+    weekColumnWidth: snapshot.weekColumnWidth,
+    monthColumnWidth: snapshot.monthColumnWidth,
     selectedTaskId: snapshot.selectedTaskId,
   };
 }

@@ -7,10 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  GanttChartPreview,
-  type GanttChartPreviewHandle,
-} from "./GanttChartPreview";
+import { GanttChartPreview } from "./GanttChartPreview";
 import {
   createEmptyTaskForChartType,
   ganttChartTypes,
@@ -19,23 +16,27 @@ import {
   getSampleTasksForChartType,
 } from "@/lib/gantt/chartTypes";
 import {
-  getDateUnitInputValue,
-  getQuarterOptionsForRange,
+  getFrappeRangeEnd,
+  getTaskDateBounds,
   getTimelineRangeForTasks,
   isTimelineRangeValid,
-  resolveDateUnitInputValue,
   snapDateToUnit,
-  type QuarterOption,
 } from "@/lib/gantt/dateUnits";
 import {
   addGanttTask,
   applyGanttProgressChange,
   applySafeGanttDatePatch,
+  clampProjectTimelineColumnWidth,
+  compareDateInputs,
   createGanttDebugSnapshot,
   defaultGanttTaskColor,
+  defaultProjectMonthColumnWidth,
+  defaultProjectWeekColumnWidth,
   formatDateForInput,
   ganttBackgroundTemplateOptions,
   ganttTaskColorOptions,
+  getDefaultProjectTimelineColumnWidth,
+  getProjectTimelineColumnWidthRange,
   getValidPreviewTasks,
   isValidGanttTaskColor,
   isValidDateObject,
@@ -43,6 +44,7 @@ import {
   normalizeGanttTaskColor,
   parseDependencyInput,
   removeGanttTask,
+  isValidDateInput,
   updateGanttTask,
   updateGanttTaskId,
   validateGanttTasks,
@@ -59,6 +61,7 @@ import {
   readGanttDebugEnabled,
   recordGanttDebugEvent,
 } from "@/lib/gantt/debug";
+import { stabilizeSvgAnimations } from "@/lib/gantt/svgExport";
 import { resolveGanttTaskVisual } from "@/lib/gantt/taskColorResolver";
 import {
   defaultGanttPalette,
@@ -68,9 +71,13 @@ import {
 type GeneratedGanttImage = {
   dataUrl: string;
   fileName: string;
-  createdAt: string;
-  chartType: GanttChartType;
-  taskCount: number;
+};
+
+type PreparedExportTarget = {
+  cleanup: () => void;
+  height: number;
+  node: HTMLElement;
+  width: number;
 };
 
 const viewModes: Array<{ label: string; viewMode: GanttViewMode }> = [
@@ -114,8 +121,10 @@ const initialTimelineRange = getTimelineRangeForTasks(
   initialViewMode,
 );
 const imageExportTimeoutMs = 6000;
-const fallbackImageWidth = 1440;
 const fallbackImagePixelRatio = 2;
+const fallbackImageMinChartWidth = 480;
+const fallbackDayColumnWidth = 34;
+const fallbackQuarterColumnWidth = 128;
 
 function withTimeout<T>(
   promise: Promise<T>,
@@ -170,7 +179,7 @@ function getFallbackTimelineColumns(
   }> = [];
   let cursor = new Date(start);
 
-  while (cursor <= end && columns.length < 90) {
+  while (cursor <= end && columns.length < 240) {
     const columnStart = new Date(cursor);
     const columnEnd =
       viewMode === "Day"
@@ -192,7 +201,9 @@ function getFallbackTimelineColumns(
       start: columnStart,
       end: columnEnd,
       group:
-        viewMode === "Quarter" ? String(columnStart.getFullYear()) : monthLabel,
+        viewMode === "Day" || viewMode === "Week"
+          ? monthLabel
+          : String(columnStart.getFullYear()),
       label:
         viewMode === "Day"
           ? String(columnStart.getDate()).padStart(2, "0")
@@ -247,30 +258,119 @@ function drawDiamond(
   context.fill();
 }
 
+function getFallbackTimelineLineStyle(
+  columns: Array<{
+    start: Date;
+    end: Date;
+    label: string;
+    group: string;
+  }>,
+  index: number,
+) {
+  const isGroupBoundary =
+    index === 0 || columns[index - 1]?.group !== columns[index]?.group;
+
+  return isGroupBoundary
+    ? {
+        color: defaultGanttPalette.neutral.textSecondary,
+        width: 1.35,
+      }
+    : {
+        color: defaultGanttPalette.neutral.secondaryBar,
+        width: 0.9,
+        dash: [4, 4],
+      };
+}
+
+function drawCanvasVerticalLine(
+  context: CanvasRenderingContext2D,
+  x: number,
+  yStart: number,
+  yEnd: number,
+  options?: {
+    color?: string;
+    width?: number;
+    dash?: number[];
+  },
+) {
+  context.save();
+  context.strokeStyle = options?.color ?? defaultGanttPalette.neutral.gridLine;
+  context.lineWidth = options?.width ?? 1;
+  context.setLineDash(options?.dash ?? []);
+  context.beginPath();
+  context.moveTo(x, yStart);
+  context.lineTo(x, yEnd);
+  context.stroke();
+  context.restore();
+}
+
+function getCanvasFallbackColumnWidth(
+  viewMode: GanttViewMode,
+  weekColumnWidth: number,
+  monthColumnWidth: number,
+) {
+  if (viewMode === "Week") {
+    return weekColumnWidth;
+  }
+
+  if (viewMode === "Month") {
+    return monthColumnWidth;
+  }
+
+  if (viewMode === "Quarter") {
+    return fallbackQuarterColumnWidth;
+  }
+
+  return fallbackDayColumnWidth;
+}
+
 function createCanvasFallbackImage({
   chartType,
+  monthColumnWidth,
   previewTasks,
+  showSidebar = true,
   timelineEnd,
   timelineStart,
   viewMode,
+  weekColumnWidth,
 }: {
   chartType: GanttChartType;
+  monthColumnWidth: number;
   previewTasks: GanttTask[];
+  showSidebar?: boolean;
   timelineEnd: string;
   timelineStart: string;
   viewMode: GanttViewMode;
+  weekColumnWidth: number;
 }): string {
-  const rowHeight = 46;
-  const headerHeight = 74;
-  const topPadding = 30;
-  const leftColumnWidth = 280;
-  const chartPaddingRight = 36;
-  const chartWidth = fallbackImageWidth - leftColumnWidth - chartPaddingRight;
+  const rowHeight = 48;
+  const headerHeight = 85;
+  const leftPadding = showSidebar ? 20 : 0;
+  const leftColumnWidth = showSidebar ? 236 : 0;
+  const chartPaddingRight = showSidebar ? 20 : 0;
+  const bottomPadding = showSidebar ? 18 : 8;
+  const resolvedTimelineEnd =
+    chartType === "project"
+      ? getFrappeRangeEnd(timelineEnd, viewMode)
+      : timelineEnd;
+  const columns = getFallbackTimelineColumns(
+    timelineStart,
+    resolvedTimelineEnd,
+    viewMode,
+  );
+  const preferredColumnWidth = getCanvasFallbackColumnWidth(
+    viewMode,
+    weekColumnWidth,
+    monthColumnWidth,
+  );
+  const chartWidth = Math.max(
+    fallbackImageMinChartWidth,
+    Math.max(columns.length, 1) * preferredColumnWidth,
+  );
+  const timelineXStart = leftPadding + leftColumnWidth;
+  const imageWidth = timelineXStart + chartWidth + chartPaddingRight;
   const imageHeight =
-    topPadding +
-    headerHeight +
-    Math.max(previewTasks.length, 1) * rowHeight +
-    36;
+    headerHeight + Math.max(previewTasks.length, 1) * rowHeight + bottomPadding;
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
 
@@ -278,61 +378,87 @@ function createCanvasFallbackImage({
     throw new Error("canvas context unavailable");
   }
 
-  canvas.width = fallbackImageWidth * fallbackImagePixelRatio;
+  canvas.width = imageWidth * fallbackImagePixelRatio;
   canvas.height = imageHeight * fallbackImagePixelRatio;
-  canvas.style.width = `${fallbackImageWidth}px`;
+  canvas.style.width = `${imageWidth}px`;
   canvas.style.height = `${imageHeight}px`;
   context.scale(fallbackImagePixelRatio, fallbackImagePixelRatio);
 
   context.fillStyle = defaultGanttPalette.neutral.background;
-  context.fillRect(0, 0, fallbackImageWidth, imageHeight);
+  context.fillRect(0, 0, imageWidth, imageHeight);
 
   context.fillStyle = defaultGanttPalette.neutral.surface;
-  context.fillRect(0, 0, fallbackImageWidth, topPadding + headerHeight);
+  context.fillRect(0, 0, imageWidth, headerHeight);
+  context.fillStyle = defaultGanttPalette.neutral.rowDivider;
+  context.fillRect(0, headerHeight - 1, imageWidth, 1);
 
-  context.fillStyle = defaultGanttPalette.neutral.textPrimary;
-  context.font = "700 24px Arial, sans-serif";
-  context.fillText("Gantt Chart", 28, 38);
-  context.font = "13px Arial, sans-serif";
-  context.fillStyle = defaultGanttPalette.neutral.textSecondary;
-  context.fillText(
-    `${chartType} / ${viewMode} / ${timelineStart} - ${timelineEnd}`,
-    28,
-    62,
-  );
-
-  const columns = getFallbackTimelineColumns(
-    timelineStart,
-    timelineEnd,
-    viewMode,
-  );
   const rangeStartTime = parseInputDate(timelineStart).getTime();
   const rangeEndTime = addDays(parseInputDate(timelineEnd), 1).getTime();
   const rangeDuration = Math.max(1, rangeEndTime - rangeStartTime);
   const columnWidth = chartWidth / Math.max(columns.length, 1);
+  const guideLineTop = 0;
+  const guideLineBottom = imageHeight;
 
-  context.font = "700 12px Arial, sans-serif";
+  if (showSidebar) {
+    drawCanvasVerticalLine(context, timelineXStart, 0, imageHeight, {
+      color: defaultGanttPalette.neutral.rowDivider,
+      width: 1,
+    });
+  }
+
+  context.save();
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.font = "600 12px Arial, sans-serif";
   columns.forEach((column, index) => {
-    const x = leftColumnWidth + index * columnWidth;
+    const x = timelineXStart + index * columnWidth;
+    const lineStyle = getFallbackTimelineLineStyle(columns, index);
 
-    context.strokeStyle = defaultGanttPalette.neutral.gridLine;
-    context.lineWidth = 1;
-    context.beginPath();
-    context.moveTo(x, topPadding + 30);
-    context.lineTo(x, imageHeight - 20);
-    context.stroke();
+    drawCanvasVerticalLine(
+      context,
+      x,
+      guideLineTop,
+      guideLineBottom,
+      lineStyle,
+    );
 
     context.fillStyle = defaultGanttPalette.neutral.textSecondary;
-    context.fillText(column.label, x + 8, topPadding + 58);
-
-    if (index === 0 || columns[index - 1]?.group !== column.group) {
-      context.fillStyle = defaultGanttPalette.neutral.textPrimary;
-      context.fillText(column.group, x + 8, topPadding + 34);
-    }
+    context.fillText(column.label, x + columnWidth / 2, 49);
   });
+  context.font = "700 13px Arial, sans-serif";
+
+  let groupStartIndex = 0;
+
+  while (groupStartIndex < columns.length) {
+    const group = columns[groupStartIndex]?.group ?? "";
+    let groupEndIndex = groupStartIndex;
+
+    while (
+      groupEndIndex + 1 < columns.length &&
+      columns[groupEndIndex + 1]?.group === group
+    ) {
+      groupEndIndex += 1;
+    }
+
+    const groupStartX = timelineXStart + groupStartIndex * columnWidth;
+    const groupWidth = (groupEndIndex - groupStartIndex + 1) * columnWidth;
+
+    context.fillStyle = defaultGanttPalette.neutral.textPrimary;
+    context.fillText(group, groupStartX + groupWidth / 2, 22);
+    groupStartIndex = groupEndIndex + 1;
+  }
+
+  context.restore();
+
+  if (showSidebar) {
+    context.fillStyle = defaultGanttPalette.neutral.textSecondary;
+    context.font = "700 11px Arial, sans-serif";
+    context.fillText("Task", leftPadding, 23);
+    context.fillText("Owner", leftPadding, 52);
+  }
 
   previewTasks.forEach((task, index) => {
-    const rowTop = topPadding + headerHeight + index * rowHeight;
+    const rowTop = headerHeight + index * rowHeight;
     const rowMiddle = rowTop + rowHeight / 2;
     const visual = resolveGanttTaskVisual(task, {
       chartType,
@@ -344,23 +470,40 @@ function createCanvasFallbackImage({
       chartType === "milestones" || task.nodeType === "milestone";
     const isGroup = task.nodeType === "group";
 
+    if (index % 2 === 0) {
+      context.fillStyle = defaultGanttPalette.neutral.surface;
+      context.fillRect(0, rowTop, imageWidth, rowHeight);
+    }
+
     context.strokeStyle = defaultGanttPalette.neutral.rowDivider;
     context.lineWidth = 1;
     context.beginPath();
     context.moveTo(0, rowTop);
-    context.lineTo(fallbackImageWidth, rowTop);
+    context.lineTo(imageWidth, rowTop);
     context.stroke();
 
-    context.fillStyle = defaultGanttPalette.neutral.textPrimary;
-    context.font = isGroup
-      ? "700 13px Arial, sans-serif"
-      : "13px Arial, sans-serif";
-    context.fillText(task.name, 28, rowMiddle + 4, leftColumnWidth - 52);
+    if (showSidebar) {
+      context.fillStyle = defaultGanttPalette.neutral.textPrimary;
+      context.font = isGroup
+        ? "700 13px Arial, sans-serif"
+        : "13px Arial, sans-serif";
+      context.fillText(
+        task.name,
+        leftPadding,
+        rowMiddle + 2,
+        leftColumnWidth - 16,
+      );
 
-    if (task.owner) {
-      context.fillStyle = defaultGanttPalette.neutral.textSecondary;
-      context.font = "12px Arial, sans-serif";
-      context.fillText(task.owner, 28, rowMiddle + 19, leftColumnWidth - 52);
+      if (task.owner) {
+        context.fillStyle = defaultGanttPalette.neutral.textSecondary;
+        context.font = "12px Arial, sans-serif";
+        context.fillText(
+          task.owner,
+          leftPadding,
+          rowMiddle + 18,
+          leftColumnWidth - 16,
+        );
+      }
     }
 
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
@@ -375,7 +518,7 @@ function createCanvasFallbackImage({
       startRatio,
       Math.min(1, (addDays(end, 1).getTime() - rangeStartTime) / rangeDuration),
     );
-    const barX = leftColumnWidth + chartWidth * startRatio;
+    const barX = timelineXStart + chartWidth * startRatio;
     const barWidth = Math.max(8, chartWidth * (endRatio - startRatio));
 
     if (isMilestone) {
@@ -417,6 +560,84 @@ function createCanvasFallbackImage({
   return canvas.toDataURL("image/png");
 }
 
+function preparePreviewExportTarget(source: HTMLElement): PreparedExportTarget {
+  const sourceRect = source.getBoundingClientRect();
+  const width = Math.max(1, Math.ceil(sourceRect.width));
+  const height = Math.max(1, Math.ceil(sourceRect.height));
+  const exportBackground = defaultGanttPalette.neutral.background;
+
+  if (width <= 0 || height <= 0) {
+    throw new Error("invalid export target size");
+  }
+
+  const shell = document.createElement("div");
+  const clone = source.cloneNode(true) as HTMLElement;
+
+  shell.style.position = "fixed";
+  shell.style.left = "-100000px";
+  shell.style.top = "0";
+  shell.style.zIndex = "-1";
+  shell.style.pointerEvents = "none";
+  shell.style.overflow = "hidden";
+  shell.style.background = exportBackground;
+  shell.style.width = `${width}px`;
+  shell.style.height = `${height}px`;
+
+  clone.style.width = `${width}px`;
+  clone.style.height = `${height}px`;
+  clone.style.maxWidth = `${width}px`;
+  clone.style.maxHeight = `${height}px`;
+  clone.style.overflow = "hidden";
+  clone.style.background = exportBackground;
+
+  shell.appendChild(clone);
+  document.body.appendChild(shell);
+
+  const sourceNodes = [
+    source,
+    ...Array.from(source.querySelectorAll<HTMLElement>("*")),
+  ];
+  const cloneNodes = [
+    clone,
+    ...Array.from(clone.querySelectorAll<HTMLElement>("*")),
+  ];
+
+  sourceNodes.forEach((sourceNode, index) => {
+    const cloneNode = cloneNodes[index];
+
+    if (!cloneNode) {
+      return;
+    }
+
+    if (sourceNode.scrollLeft !== 0 || sourceNode.scrollTop !== 0) {
+      cloneNode.scrollLeft = sourceNode.scrollLeft;
+      cloneNode.scrollTop = sourceNode.scrollTop;
+    }
+  });
+
+  clone
+    .querySelectorAll<HTMLElement>(
+      ".gantt-preview, .gantt-preview-canvas, .gantt-container",
+    )
+    .forEach((node) => {
+      node.style.background = exportBackground;
+      node.style.backgroundColor = exportBackground;
+    });
+  clone.querySelectorAll<SVGSVGElement>("svg.gantt").forEach((node) => {
+    node.style.background = exportBackground;
+    node.style.backgroundColor = exportBackground;
+  });
+
+  stabilizeSvgAnimations(clone);
+
+  return {
+    cleanup: () => shell.remove(),
+    height,
+    node: shell,
+    width,
+  };
+}
+
 function getFieldIssue(
   issues: ReturnType<typeof validateGanttTasks>,
   taskId: string,
@@ -429,53 +650,19 @@ function getFieldIssue(
 
 function DateUnitInput({
   ariaLabel,
-  boundary,
-  quarterOptions,
   value,
-  viewMode,
   onChange,
 }: {
   ariaLabel: string;
-  boundary: "start" | "end";
-  quarterOptions: QuarterOption[];
   value: string;
-  viewMode: GanttViewMode;
   onChange: (value: string) => void;
 }) {
-  const unitValue = getDateUnitInputValue(value, viewMode);
-
-  if (viewMode === "Quarter") {
-    return (
-      <select
-        aria-label={ariaLabel}
-        value={unitValue}
-        onChange={(event) =>
-          onChange(
-            resolveDateUnitInputValue(event.target.value, viewMode, boundary),
-          )
-        }
-      >
-        {quarterOptions.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    );
-  }
-
   return (
     <input
       aria-label={ariaLabel}
-      type={
-        viewMode === "Week" ? "week" : viewMode === "Month" ? "month" : "date"
-      }
-      value={unitValue}
-      onChange={(event) =>
-        onChange(
-          resolveDateUnitInputValue(event.target.value, viewMode, boundary),
-        )
-      }
+      type="date"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
     />
   );
 }
@@ -488,18 +675,18 @@ export function GanttEditorShell() {
     timelineStart: initialTimelineRange.start,
     timelineEnd: initialTimelineRange.end,
     backgroundTemplate: "clean",
+    weekColumnWidth: defaultProjectWeekColumnWidth,
+    monthColumnWidth: defaultProjectMonthColumnWidth,
     selectedTaskId: initialTasks[0]?.id,
   });
   const [debugEnabled] = useState(() => readGanttDebugEnabled());
   const [exportStatus, setExportStatus] = useState("");
-  const [generatedImage, setGeneratedImage] =
-    useState<GeneratedGanttImage | null>(null);
+  const [toastMessage, setToastMessage] = useState("");
   const [colorDialogTaskId, setColorDialogTaskId] = useState<string | null>(
     null,
   );
   const [draftColor, setDraftColor] = useState(defaultGanttTaskColor);
   const previewRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<GanttChartPreviewHandle>(null);
   const taskRowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const issues = useMemo(
@@ -517,17 +704,6 @@ export function GanttEditorShell() {
         ? getPreviewTasksForChartType(validTasks, state.chartType)
         : validTasks,
     [state.chartType, validTasks],
-  );
-  const quarterOptions = useMemo(
-    () =>
-      getQuarterOptionsForRange(
-        {
-          start: state.timelineStart,
-          end: state.timelineEnd,
-        },
-        state.tasks,
-      ),
-    [state.tasks, state.timelineEnd, state.timelineStart],
   );
   const snapshot = useMemo(() => createGanttDebugSnapshot(state), [state]);
   const timelineIssue = isTimelineRangeValid({
@@ -550,6 +726,19 @@ export function GanttEditorShell() {
     () => getGanttPaletteCssVariables(defaultGanttPalette) as CSSProperties,
     [],
   );
+  const timelineScaleMode =
+    state.chartType === "project" &&
+    (state.viewMode === "Week" || state.viewMode === "Month")
+      ? state.viewMode
+      : null;
+  const timelineScaleValue = timelineScaleMode
+    ? timelineScaleMode === "Week"
+      ? state.weekColumnWidth
+      : state.monthColumnWidth
+    : getDefaultProjectTimelineColumnWidth("Week");
+  const timelineScaleRange = timelineScaleMode
+    ? getProjectTimelineColumnWidthRange(timelineScaleMode)
+    : null;
 
   useEffect(() => {
     recordGanttDebugEvent(
@@ -575,14 +764,67 @@ export function GanttEditorShell() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [colorDialogTaskId]);
 
+  useEffect(() => {
+    if (!toastMessage) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => setToastMessage(""), 2600);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [toastMessage]);
+
+  function syncTimelineRangeToTasks(
+    nextState: GanttEditorShellState,
+  ): GanttEditorShellState {
+    if (nextState.tasks.length === 0) {
+      return nextState;
+    }
+
+    const taskBounds = getTaskDateBounds(nextState.tasks);
+
+    if (!taskBounds) {
+      return nextState;
+    }
+
+    const fallbackRange = getTimelineRangeForTasks(
+      nextState.tasks,
+      nextState.viewMode,
+    );
+    const timelineStart = !isValidDateInput(nextState.timelineStart)
+      ? fallbackRange.start
+      : compareDateInputs(taskBounds.start, nextState.timelineStart) < 0
+        ? snapDateToUnit(taskBounds.start, nextState.viewMode, "start")
+        : nextState.timelineStart;
+    const timelineEnd = !isValidDateInput(nextState.timelineEnd)
+      ? fallbackRange.end
+      : compareDateInputs(taskBounds.end, nextState.timelineEnd) > 0
+        ? taskBounds.end
+        : nextState.timelineEnd;
+
+    if (
+      timelineStart === nextState.timelineStart &&
+      timelineEnd === nextState.timelineEnd
+    ) {
+      return nextState;
+    }
+
+    return {
+      ...nextState,
+      timelineStart,
+      timelineEnd,
+    };
+  }
+
   function updateState(nextState: GanttEditorShellState, reason: string) {
-    setGeneratedImage(null);
+    const resolvedState = syncTimelineRangeToTasks(nextState);
+
     setExportStatus("");
-    setState(nextState);
+    setState(resolvedState);
     recordGanttDebugEvent(
       debugEnabled,
       reason,
-      createGanttDebugPayload(createGanttDebugSnapshot(nextState)),
+      createGanttDebugPayload(createGanttDebugSnapshot(resolvedState)),
     );
   }
 
@@ -716,6 +958,7 @@ export function GanttEditorShell() {
     field: "start" | "end" | "date",
     value: string,
   ) {
+    const currentTask = getCurrentTask(taskId);
     const patch = {
       [field]: value,
     } as Partial<GanttTask>;
@@ -727,13 +970,38 @@ export function GanttEditorShell() {
     }
 
     if (state.chartType === "wbs") {
-      const task = getCurrentTask(taskId);
-
-      if (task?.nodeType === "milestone") {
+      if (currentTask?.nodeType === "milestone") {
         patch.date = value;
         patch.start = value;
         patch.end = value;
       }
+    }
+
+    if (
+      field === "start" &&
+      currentTask &&
+      isValidDateInput(value) &&
+      isValidDateInput(currentTask.end) &&
+      compareDateInputs(value, currentTask.end) > 0
+    ) {
+      patch.end = value;
+    }
+
+    if (
+      field === "end" &&
+      currentTask &&
+      isValidDateInput(value) &&
+      isValidDateInput(currentTask.start) &&
+      compareDateInputs(value, currentTask.start) < 0
+    ) {
+      setToastMessage("종료일은 시작일보다 빠를 수 없습니다.");
+      recordGanttDebugEvent(debugEnabled, "task.end.invalid_blocked", {
+        taskId,
+        start: currentTask.start,
+        end: value,
+      });
+      focusTaskEditor(taskId);
+      return;
     }
 
     const nextTasks = updateGanttTask(state.tasks, taskId, patch);
@@ -801,7 +1069,6 @@ export function GanttEditorShell() {
       },
       "tasks.reset_sample",
     );
-    setExportStatus("");
   }
 
   function handleClearTasks() {
@@ -813,7 +1080,6 @@ export function GanttEditorShell() {
       },
       "tasks.clear",
     );
-    setExportStatus("");
   }
 
   function handleViewModeChange(viewMode: GanttViewMode) {
@@ -821,8 +1087,6 @@ export function GanttEditorShell() {
       {
         ...state,
         viewMode,
-        timelineStart: snapDateToUnit(state.timelineStart, viewMode, "start"),
-        timelineEnd: snapDateToUnit(state.timelineEnd, viewMode, "end"),
       },
       "view_mode.change",
     );
@@ -857,11 +1121,12 @@ export function GanttEditorShell() {
         timelineStart: nextTimelineRange.start,
         timelineEnd: nextTimelineRange.end,
         backgroundTemplate: state.backgroundTemplate,
+        weekColumnWidth: state.weekColumnWidth,
+        monthColumnWidth: state.monthColumnWidth,
         selectedTaskId: nextTasks[0]?.id,
       },
       "chart_type.change",
     );
-    setExportStatus("");
   }
 
   function handleDateChange(taskId: string, start: Date, end: Date) {
@@ -935,6 +1200,28 @@ export function GanttEditorShell() {
           )?.value ?? "clean",
       },
       "background_template.change",
+    );
+  }
+
+  function handleTimelineScaleChange(nextWidth: number) {
+    if (!timelineScaleMode) {
+      return;
+    }
+
+    const clampedWidth = clampProjectTimelineColumnWidth(
+      timelineScaleMode,
+      nextWidth,
+    );
+
+    updateState(
+      {
+        ...state,
+        weekColumnWidth:
+          timelineScaleMode === "Week" ? clampedWidth : state.weekColumnWidth,
+        monthColumnWidth:
+          timelineScaleMode === "Month" ? clampedWidth : state.monthColumnWidth,
+      },
+      "timeline.column_width.change",
     );
   }
 
@@ -1020,7 +1307,7 @@ export function GanttEditorShell() {
     link.download = image.fileName;
     link.href = image.dataUrl;
     link.click();
-    setExportStatus("이미지 다운로드가 시작되었습니다.");
+    setExportStatus("차트 이미지 다운로드가 시작되었습니다.");
     recordGanttDebugEvent(debugEnabled, "export.image.download", {
       byteLength: image.dataUrl.length,
       fileName: image.fileName,
@@ -1036,41 +1323,52 @@ export function GanttEditorShell() {
       return {
         dataUrl,
         fileName: getImageFileName(),
-        createdAt: new Date().toISOString(),
-        chartType: state.chartType,
-        taskCount: previewTasks.length,
       };
     }
 
-    setExportStatus("이미지를 생성하고 있습니다.");
+    setExportStatus("차트 이미지를 내보내는 중입니다.");
     recordGanttDebugEvent(debugEnabled, "export.image.start", {
       taskCount: previewTasks.length,
     });
 
     try {
       const { toPng } = await import("html-to-image");
-      const previewWidth = Math.ceil(previewRef.current.scrollWidth);
-      const previewHeight = Math.ceil(previewRef.current.scrollHeight);
-      const dataUrl = await withTimeout(
-        toPng(previewRef.current, {
-          backgroundColor: defaultGanttPalette.neutral.background,
-          pixelRatio: 2,
-          cacheBust: true,
-          skipFonts: true,
-          width: previewWidth,
-          height: previewHeight,
-          canvasWidth: previewWidth * 2,
-          canvasHeight: previewHeight * 2,
-        }),
-        imageExportTimeoutMs,
-        "image export timeout",
-      );
+      const exportTarget =
+        previewRef.current.querySelector<HTMLElement>(
+          ".gantt-preview, .typed-gantt-preview",
+        ) ?? previewRef.current;
+      const preparedTarget = preparePreviewExportTarget(exportTarget);
+
+      await new Promise<void>((resolve) => {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => resolve());
+        });
+      });
+
+      let dataUrl = "";
+
+      try {
+        dataUrl = await withTimeout(
+          toPng(preparedTarget.node, {
+            backgroundColor: defaultGanttPalette.neutral.background,
+            pixelRatio: 2,
+            cacheBust: true,
+            skipFonts: true,
+            style: {
+              background: defaultGanttPalette.neutral.background,
+            },
+            width: preparedTarget.width,
+            height: preparedTarget.height,
+          }),
+          imageExportTimeoutMs,
+          "image export timeout",
+        );
+      } finally {
+        preparedTarget.cleanup();
+      }
       const image = createImageState(dataUrl);
 
-      setGeneratedImage(image);
-      setExportStatus(
-        "이미지가 생성되었습니다. 미리보기를 확인한 뒤 다운로드할 수 있습니다.",
-      );
+      setExportStatus("차트 이미지를 준비했습니다.");
       recordGanttDebugEvent(debugEnabled, "export.image.success", {
         byteLength: dataUrl.length,
         fileName: image.fileName,
@@ -1082,22 +1380,35 @@ export function GanttEditorShell() {
         message: error instanceof Error ? error.message : String(error),
       });
 
-      try {
-        const dataUrl = createCanvasFallbackImage({
-          chartType: state.chartType,
-          previewTasks,
-          timelineEnd: state.timelineEnd,
-          timelineStart: state.timelineStart,
-          viewMode: state.viewMode,
-        });
-        const image = createImageState(dataUrl);
-
-        setGeneratedImage(image);
+      if (state.chartType === "project") {
         setExportStatus(
-          "미리보기 DOM 이미지 생성이 지연되어 문서용 이미지로 생성했습니다.",
+          "차트 preview 캡처에 실패했습니다. preview를 다시 확인하세요.",
+        );
+        recordGanttDebugEvent(debugEnabled, "export.image.project_failed", {
+          message: error instanceof Error ? error.message : String(error),
+        });
+
+        return null;
+      }
+
+      try {
+        const image = createImageState(
+          createCanvasFallbackImage({
+            chartType: state.chartType,
+            monthColumnWidth: state.monthColumnWidth,
+            previewTasks,
+            timelineEnd: state.timelineEnd,
+            timelineStart: state.timelineStart,
+            viewMode: state.viewMode,
+            weekColumnWidth: state.weekColumnWidth,
+          }),
+        );
+
+        setExportStatus(
+          "미리보기 캡처가 지연되어 차트 fallback 이미지를 준비했습니다.",
         );
         recordGanttDebugEvent(debugEnabled, "export.image.fallback_success", {
-          byteLength: dataUrl.length,
+          byteLength: image.dataUrl.length,
           fileName: image.fileName,
           reason: error instanceof Error ? error.message : String(error),
         });
@@ -1105,7 +1416,7 @@ export function GanttEditorShell() {
         return image;
       } catch (fallbackError) {
         setExportStatus(
-          "이미지 생성에 실패했습니다. preview를 다시 확인하세요.",
+          "차트 이미지 생성에 실패했습니다. preview를 다시 확인하세요.",
         );
         recordGanttDebugEvent(debugEnabled, "export.image.fallback_error", {
           message:
@@ -1119,12 +1430,8 @@ export function GanttEditorShell() {
     }
   }
 
-  async function handleCreateImage() {
-    await createPreviewImage();
-  }
-
-  async function handleDownloadImage() {
-    const image = generatedImage ?? (await createPreviewImage());
+  async function handleExportImage() {
+    const image = await createPreviewImage();
 
     if (!image) {
       return;
@@ -1189,10 +1496,7 @@ export function GanttEditorShell() {
           <span>Start</span>
           <DateUnitInput
             ariaLabel={`${task.name} 시작`}
-            boundary="start"
-            quarterOptions={quarterOptions}
             value={task.start}
-            viewMode={state.viewMode}
             onChange={(value) => handleTaskDateChange(task.id, "start", value)}
           />
         </label>
@@ -1200,10 +1504,7 @@ export function GanttEditorShell() {
           <span>End</span>
           <DateUnitInput
             ariaLabel={`${task.name} 종료`}
-            boundary="end"
-            quarterOptions={quarterOptions}
             value={task.end}
-            viewMode={state.viewMode}
             onChange={(value) => handleTaskDateChange(task.id, "end", value)}
           />
         </label>
@@ -1251,10 +1552,7 @@ export function GanttEditorShell() {
           <span>Date</span>
           <DateUnitInput
             ariaLabel={`${task.name} 날짜`}
-            boundary="start"
-            quarterOptions={quarterOptions}
             value={task.date || task.start}
-            viewMode="Day"
             onChange={(value) => handleTaskDateChange(task.id, "date", value)}
           />
         </label>
@@ -1410,10 +1708,7 @@ export function GanttEditorShell() {
             <span>Date</span>
             <DateUnitInput
               ariaLabel={`${task.name} 날짜`}
-              boundary="start"
-              quarterOptions={quarterOptions}
               value={task.date || task.start}
-              viewMode={state.viewMode}
               onChange={(value) => handleTaskDateChange(task.id, "date", value)}
             />
           </label>
@@ -1424,10 +1719,7 @@ export function GanttEditorShell() {
               <span>Start</span>
               <DateUnitInput
                 ariaLabel={`${task.name} 시작`}
-                boundary="start"
-                quarterOptions={quarterOptions}
                 value={task.start}
-                viewMode={state.viewMode}
                 onChange={(value) =>
                   handleTaskDateChange(task.id, "start", value)
                 }
@@ -1437,10 +1729,7 @@ export function GanttEditorShell() {
               <span>End</span>
               <DateUnitInput
                 ariaLabel={`${task.name} 종료`}
-                boundary="end"
-                quarterOptions={quarterOptions}
                 value={task.end}
-                viewMode={state.viewMode}
                 onChange={(value) =>
                   handleTaskDateChange(task.id, "end", value)
                 }
@@ -1547,18 +1836,8 @@ export function GanttEditorShell() {
         <button type="button" onClick={handleClearTasks}>
           전체 초기화
         </button>
-        <button type="button" onClick={() => chartRef.current?.scrollToToday()}>
-          오늘로 이동
-        </button>
-        <button type="button" disabled={!canExport} onClick={handleCreateImage}>
-          이미지 만들기
-        </button>
-        <button
-          type="button"
-          disabled={!canExport}
-          onClick={handleDownloadImage}
-        >
-          이미지 다운로드
+        <button type="button" disabled={!canExport} onClick={handleExportImage}>
+          이미지로 내보내기
         </button>
       </div>
 
@@ -1579,27 +1858,23 @@ export function GanttEditorShell() {
         <div className="timeline-range-controls">
           <label>
             <span>표시 시작</span>
-            <DateUnitInput
-              ariaLabel="표시 시작"
-              boundary="start"
-              quarterOptions={quarterOptions}
+            <input
+              aria-label="표시 시작"
+              type="date"
               value={state.timelineStart}
-              viewMode={state.viewMode}
-              onChange={(value) =>
-                handleTimelineRangeChange("timelineStart", value)
+              onChange={(event) =>
+                handleTimelineRangeChange("timelineStart", event.target.value)
               }
             />
           </label>
           <label>
             <span>표시 종료</span>
-            <DateUnitInput
-              ariaLabel="표시 종료"
-              boundary="end"
-              quarterOptions={quarterOptions}
+            <input
+              aria-label="표시 종료"
+              type="date"
               value={state.timelineEnd}
-              viewMode={state.viewMode}
-              onChange={(value) =>
-                handleTimelineRangeChange("timelineEnd", value)
+              onChange={(event) =>
+                handleTimelineRangeChange("timelineEnd", event.target.value)
               }
             />
           </label>
@@ -1627,6 +1902,31 @@ export function GanttEditorShell() {
                 ))}
               </select>
             </label>
+            {timelineScaleMode && timelineScaleRange ? (
+              <label className="timeline-scale-control">
+                <span>
+                  {timelineScaleMode === "Week" ? "주 간격" : "월 간격"}
+                </span>
+                <div className="timeline-scale-control-row">
+                  <input
+                    aria-label={
+                      timelineScaleMode === "Week"
+                        ? "주 간격 조절"
+                        : "월 간격 조절"
+                    }
+                    max={timelineScaleRange.max}
+                    min={timelineScaleRange.min}
+                    step={1}
+                    type="range"
+                    value={timelineScaleValue}
+                    onChange={(event) =>
+                      handleTimelineScaleChange(Number(event.target.value))
+                    }
+                  />
+                  <output>{timelineScaleValue}px</output>
+                </div>
+              </label>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -1655,11 +1955,12 @@ export function GanttEditorShell() {
             <GanttChartPreview
               chartType={state.chartType}
               debugEnabled={debugEnabled}
-              ref={chartRef}
+              monthColumnWidth={state.monthColumnWidth}
               tasks={previewTasks}
               timelineEnd={state.timelineEnd}
               timelineStart={state.timelineStart}
               viewMode={state.viewMode}
+              weekColumnWidth={state.weekColumnWidth}
               onDateChange={handleDateChange}
               onProgressChange={handleProgressChange}
               onSelectTask={handlePreviewTaskSelect}
@@ -1676,34 +1977,6 @@ export function GanttEditorShell() {
           </div>
           {exportStatus ? (
             <p className="export-status">{exportStatus}</p>
-          ) : null}
-          {generatedImage ? (
-            <section
-              className="image-output-panel"
-              aria-label="이미지 출력 결과"
-            >
-              <div className="image-output-copy">
-                <h3>이미지 출력</h3>
-                <p>
-                  현재 preview를 PNG 이미지로 생성했습니다. 생성된 이미지를
-                  확인한 뒤 파일로 내려받을 수 있습니다.
-                </p>
-                <small>
-                  {generatedImage.fileName} / {generatedImage.taskCount}개 항목
-                  / {generatedImage.chartType}
-                </small>
-              </div>
-              <div className="image-output-frame">
-                {/* eslint-disable-next-line @next/next/no-img-element -- Data URL preview is generated locally after export. */}
-                <img
-                  alt="간트 차트 이미지 출력 미리보기"
-                  src={generatedImage.dataUrl}
-                />
-              </div>
-              <button type="button" onClick={handleDownloadImage}>
-                생성 이미지 다운로드
-              </button>
-            </section>
           ) : null}
         </section>
 
@@ -1759,6 +2032,12 @@ export function GanttEditorShell() {
           )}
         </section>
       </div>
+
+      {toastMessage ? (
+        <div aria-live="polite" className="gantt-toast" role="alert">
+          {toastMessage}
+        </div>
+      ) : null}
 
       {colorDialogTask ? (
         <div
