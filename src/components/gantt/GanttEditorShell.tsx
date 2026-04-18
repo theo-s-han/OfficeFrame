@@ -65,6 +65,7 @@ import {
   inlineSvgPresentationStyles,
   stabilizeSvgAnimations,
 } from "@/lib/gantt/svgExport";
+import { exportMilestonePreviewImage } from "@/lib/gantt/milestonePreviewExport";
 import { exportProjectPreviewImage } from "@/lib/gantt/projectPreviewExport";
 import { resolveGanttTaskVisual } from "@/lib/gantt/taskColorResolver";
 import {
@@ -1353,6 +1354,24 @@ export function GanttEditorShell() {
           byteLength: dataUrl.length,
           fileName: image.fileName,
           renderer: "project-preview-canvas",
+        });
+
+        return image;
+      }
+
+      if (state.chartType === "milestones") {
+        const dataUrl = await withTimeout(
+          exportMilestonePreviewImage(previewRef.current),
+          imageExportTimeoutMs,
+          "milestone image export timeout",
+        );
+        const image = createImageState(dataUrl);
+
+        setExportStatus("차트 이미지를 준비했습니다.");
+        recordGanttDebugEvent(debugEnabled, "export.image.success", {
+          byteLength: dataUrl.length,
+          fileName: image.fileName,
+          renderer: "milestone-preview-canvas",
         });
 
         return image;
