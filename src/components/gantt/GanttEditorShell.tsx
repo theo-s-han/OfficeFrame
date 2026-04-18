@@ -65,6 +65,7 @@ import {
   inlineSvgPresentationStyles,
   stabilizeSvgAnimations,
 } from "@/lib/gantt/svgExport";
+import { exportProjectPreviewImage } from "@/lib/gantt/projectPreviewExport";
 import { resolveGanttTaskVisual } from "@/lib/gantt/taskColorResolver";
 import {
   defaultGanttPalette,
@@ -396,7 +397,10 @@ function createCanvasFallbackImage({
   context.fillRect(0, headerHeight - 1, imageWidth, 1);
 
   const rangeStartTime = parseInputDate(timelineStart).getTime();
-  const rangeEndTime = addDays(parseInputDate(timelineEnd), 1).getTime();
+  const rangeEndTime = addDays(
+    parseInputDate(resolvedTimelineEnd),
+    1,
+  ).getTime();
   const rangeDuration = Math.max(1, rangeEndTime - rangeStartTime);
   const columnWidth = chartWidth / Math.max(columns.length, 1);
   const guideLineTop = 0;
@@ -1336,6 +1340,24 @@ export function GanttEditorShell() {
     });
 
     try {
+      if (state.chartType === "project") {
+        const dataUrl = await withTimeout(
+          exportProjectPreviewImage(previewRef.current),
+          imageExportTimeoutMs,
+          "project image export timeout",
+        );
+        const image = createImageState(dataUrl);
+
+        setExportStatus("차트 이미지를 준비했습니다.");
+        recordGanttDebugEvent(debugEnabled, "export.image.success", {
+          byteLength: dataUrl.length,
+          fileName: image.fileName,
+          renderer: "project-preview-canvas",
+        });
+
+        return image;
+      }
+
       const { toPng } = await import("html-to-image");
       const preparedTarget = preparePreviewExportTarget(previewRef.current);
 
@@ -1372,6 +1394,7 @@ export function GanttEditorShell() {
       recordGanttDebugEvent(debugEnabled, "export.image.success", {
         byteLength: dataUrl.length,
         fileName: image.fileName,
+        renderer: "html-to-image",
       });
 
       return image;
