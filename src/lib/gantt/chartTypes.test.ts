@@ -59,7 +59,7 @@ describe("gantt chart type presets", () => {
     });
   });
 
-  it("adds color classes to basic project preview labels", () => {
+  it("marks basic project preview bars as colorable", () => {
     const previewTasks = getPreviewTasksForChartType(
       [
         {
@@ -69,7 +69,7 @@ describe("gantt chart type presets", () => {
           end: "2026-04-24",
           progress: 30,
           owner: "PM",
-          color: "coral",
+          color: "#C75D4F",
         },
       ],
       "project",
@@ -77,13 +77,14 @@ describe("gantt chart type presets", () => {
 
     expect(previewTasks[0]).toMatchObject({
       name: "일정 정리 · PM",
-      customClass: "project-bar-color-coral",
+      color: "#C75D4F",
+      customClass: "project-bar-color",
     });
   });
 
   it("keeps basic project sample colors editable", () => {
     expect(getSampleTasksForChartType("project")[0]).toMatchObject({
-      color: "emerald",
+      color: "#14745F",
     });
   });
 

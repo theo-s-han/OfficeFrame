@@ -10,7 +10,9 @@ describe("GanttEditorShell", () => {
     expect(screen.getByRole("button", { name: "작업 추가" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "PNG 다운로드" })).toBeEnabled();
     expect(screen.getByLabelText("배경 템플릿")).toHaveValue("clean");
-    expect(screen.getByLabelText("요구사항 정리 색상")).toHaveValue("emerald");
+    expect(
+      screen.getByRole("button", { name: "요구사항 정리 색상 선택" }),
+    ).toHaveTextContent("#14745F");
     expect(
       screen.getByDisplayValue("요구사항 정리").closest("[aria-selected]"),
     ).toHaveAttribute("aria-selected", "true");
@@ -88,11 +90,35 @@ describe("GanttEditorShell", () => {
     fireEvent.change(screen.getByLabelText("배경 템플릿"), {
       target: { value: "document" },
     });
-    fireEvent.change(screen.getByLabelText("요구사항 정리 색상"), {
-      target: { value: "coral" },
-    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "요구사항 정리 색상 선택" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "코랄 #C75D4F" }));
+    fireEvent.click(screen.getByRole("button", { name: "적용" }));
 
     expect(screen.getByLabelText("배경 템플릿")).toHaveValue("document");
-    expect(screen.getByLabelText("요구사항 정리 색상")).toHaveValue("coral");
+    expect(
+      screen.getByRole("button", { name: "요구사항 정리 색상 선택" }),
+    ).toHaveTextContent("#C75D4F");
+  });
+
+  it("applies a custom HEX color through the basic project color dialog", () => {
+    render(<GanttEditorShell />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "요구사항 정리 색상 선택" }),
+    );
+    expect(
+      screen.getByRole("dialog", { name: "요구사항 정리 색상 선택" }),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("HEX 색상 코드"), {
+      target: { value: "#4F6FAA" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "적용" }));
+
+    expect(
+      screen.getByRole("button", { name: "요구사항 정리 색상 선택" }),
+    ).toHaveTextContent("#4F6FAA");
   });
 });

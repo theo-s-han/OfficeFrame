@@ -26,12 +26,15 @@ import {
   applyGanttProgressChange,
   applySafeGanttDatePatch,
   createGanttDebugSnapshot,
+  defaultGanttTaskColor,
   formatDateForInput,
   ganttBackgroundTemplateOptions,
   ganttTaskColorOptions,
   ganttTaskStatusOptions,
   getValidPreviewTasks,
+  isValidGanttTaskColor,
   isValidDateObject,
+  normalizeGanttTaskColor,
   removeGanttTask,
   updateGanttTask,
   validateGanttTasks,
@@ -137,6 +140,10 @@ export function GanttEditorShell() {
   });
   const [debugEnabled] = useState(() => readGanttDebugEnabled());
   const [exportStatus, setExportStatus] = useState<string>("");
+  const [colorDialogTaskId, setColorDialogTaskId] = useState<string | null>(
+    null,
+  );
+  const [draftColor, setDraftColor] = useState(defaultGanttTaskColor);
   const previewRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<GanttChartPreviewHandle>(null);
   const taskRowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -171,6 +178,14 @@ export function GanttEditorShell() {
     : "표시 범위의 시작은 종료보다 빠르거나 같아야 합니다.";
   const hasIssues = issues.length > 0;
   const canExport = previewTasks.length > 0 && !hasIssues && !timelineIssue;
+  const colorDialogTask = useMemo(
+    () => state.tasks.find((task) => task.id === colorDialogTaskId),
+    [colorDialogTaskId, state.tasks],
+  );
+  const canApplyDraftColor = isValidGanttTaskColor(draftColor);
+  const previewDraftColor = canApplyDraftColor
+    ? normalizeGanttTaskColor(draftColor)
+    : defaultGanttTaskColor;
 
   useEffect(() => {
     recordGanttDebugEvent(
@@ -179,6 +194,22 @@ export function GanttEditorShell() {
       createGanttDebugPayload(snapshot),
     );
   }, [debugEnabled, snapshot]);
+
+  useEffect(() => {
+    if (!colorDialogTaskId) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setColorDialogTaskId(null);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [colorDialogTaskId]);
 
   function updateState(nextState: GanttEditorShellState, reason: string) {
     setState(nextState);
@@ -468,6 +499,49 @@ export function GanttEditorShell() {
     );
   }
 
+  function openColorPicker(task: GanttTask) {
+    const color = normalizeGanttTaskColor(task.color);
+
+    setDraftColor(color);
+    setColorDialogTaskId(task.id);
+    recordGanttDebugEvent(debugEnabled, "color_picker.open", {
+      taskId: task.id,
+      color,
+    });
+  }
+
+  function closeColorPicker() {
+    setColorDialogTaskId(null);
+  }
+
+  function handleDraftColorChange(value: string) {
+    const trimmedValue = value.trim();
+
+    if (!trimmedValue) {
+      setDraftColor("");
+      return;
+    }
+
+    setDraftColor(
+      trimmedValue.startsWith("#")
+        ? trimmedValue.toUpperCase()
+        : `#${trimmedValue.toUpperCase()}`,
+    );
+  }
+
+  function handleApplyColor() {
+    if (!colorDialogTask || !canApplyDraftColor) {
+      return;
+    }
+
+    handleTaskChange(
+      colorDialogTask.id,
+      "color",
+      normalizeGanttTaskColor(draftColor),
+    );
+    closeColorPicker();
+  }
+
   function handlePreviewTaskSelect(taskId: string) {
     setState((current) => {
       if (current.selectedTaskId === taskId) {
@@ -744,21 +818,24 @@ export function GanttEditorShell() {
                     </label>
                   ) : null}
                   {state.chartType === "project" ? (
-                    <label>
+                    <label className="color-picker-field">
                       <span>색상</span>
-                      <select
-                        aria-label={`${task.name} 색상`}
-                        value={task.color ?? "emerald"}
-                        onChange={(event) =>
-                          handleTaskChange(task.id, "color", event.target.value)
-                        }
+                      <button
+                        className="color-picker-trigger"
+                        type="button"
+                        aria-label={`${task.name} 색상 선택`}
+                        onClick={() => openColorPicker(task)}
                       >
-                        {ganttTaskColorOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
+                        <span
+                          className="color-swatch"
+                          style={{
+                            backgroundColor: normalizeGanttTaskColor(
+                              task.color,
+                            ),
+                          }}
+                        />
+                        <span>{normalizeGanttTaskColor(task.color)}</span>
+                      </button>
                     </label>
                   ) : null}
                   {chartTypeConfig.fields.status ? (
@@ -909,6 +986,122 @@ export function GanttEditorShell() {
           )}
         </section>
       </div>
+
+      {colorDialogTask ? (
+        <div
+          className="color-picker-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              closeColorPicker();
+            }
+          }}
+        >
+          <section
+            aria-labelledby="gantt-color-picker-title"
+            aria-modal="true"
+            className="color-picker-dialog"
+            role="dialog"
+          >
+            <header className="color-picker-header">
+              <div>
+                <div className="panel-kicker">색상</div>
+                <h2 id="gantt-color-picker-title">
+                  {colorDialogTask.name} 색상 선택
+                </h2>
+              </div>
+              <button
+                aria-label="색상 선택 닫기"
+                className="modal-close-button"
+                type="button"
+                onClick={closeColorPicker}
+              >
+                닫기
+              </button>
+            </header>
+
+            <p className="color-picker-help">
+              팔레트에서 고르거나 직접 색상과 HEX 값을 지정합니다.
+            </p>
+
+            <div className="color-picker-current">
+              <span
+                className="color-picker-current-swatch"
+                style={{ backgroundColor: previewDraftColor }}
+              />
+              <strong>{previewDraftColor}</strong>
+            </div>
+
+            <div className="color-preset-grid" aria-label="색상 프리셋">
+              {ganttTaskColorOptions.map((option) => (
+                <button
+                  aria-label={`${option.label} ${option.value}`}
+                  aria-pressed={previewDraftColor === option.value}
+                  className="color-preset-button"
+                  key={option.value}
+                  type="button"
+                  onClick={() => setDraftColor(option.value)}
+                >
+                  <span
+                    className="color-swatch"
+                    style={{ backgroundColor: option.value }}
+                  />
+                  <span>
+                    <strong>{option.label}</strong>
+                    <small>{option.description}</small>
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <div className="custom-color-controls">
+              <label>
+                <span>직접 선택</span>
+                <input
+                  aria-label="사용자 지정 색상"
+                  type="color"
+                  value={previewDraftColor}
+                  onChange={(event) =>
+                    handleDraftColorChange(event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                <span>HEX</span>
+                <input
+                  aria-label="HEX 색상 코드"
+                  maxLength={7}
+                  placeholder="#14745F"
+                  value={draftColor}
+                  onChange={(event) =>
+                    handleDraftColorChange(event.target.value)
+                  }
+                />
+              </label>
+            </div>
+
+            {!canApplyDraftColor ? (
+              <p className="field-error" role="alert">
+                #RRGGBB 형식의 색상을 입력하세요.
+              </p>
+            ) : null}
+
+            <footer className="color-picker-actions">
+              <button type="button" onClick={closeColorPicker}>
+                취소
+              </button>
+              <button
+                className="primary-action"
+                disabled={!canApplyDraftColor}
+                type="button"
+                onClick={handleApplyColor}
+              >
+                적용
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -1,5 +1,6 @@
 import {
   createTaskId,
+  defaultGanttTaskColor,
   getGanttTaskStatusLabel,
   getTodayDateString,
   type GanttChartType,
@@ -200,7 +201,7 @@ const sampleTasksByType: Record<GanttChartType, GanttTask[]> = {
       end: "2026-04-24",
       progress: 80,
       owner: "PM",
-      color: "emerald",
+      color: "#14745F",
     },
     {
       id: "task-2",
@@ -209,7 +210,7 @@ const sampleTasksByType: Record<GanttChartType, GanttTask[]> = {
       end: "2026-04-29",
       progress: 45,
       owner: "UX",
-      color: "teal",
+      color: "#2F8F89",
     },
     {
       id: "task-3",
@@ -218,7 +219,7 @@ const sampleTasksByType: Record<GanttChartType, GanttTask[]> = {
       end: "2026-05-08",
       progress: 10,
       owner: "Dev",
-      color: "gold",
+      color: "#B7831D",
     },
     {
       id: "task-4",
@@ -227,7 +228,7 @@ const sampleTasksByType: Record<GanttChartType, GanttTask[]> = {
       end: "2026-05-12",
       progress: 0,
       owner: "Ops",
-      color: "coral",
+      color: "#C75D4F",
     },
   ],
   roadmap: [
@@ -455,7 +456,7 @@ export function createEmptyTaskForChartType(
     end: baseDate,
     progress: 0,
     owner: "",
-    color: "emerald",
+    color: defaultGanttTaskColor,
   };
 }
 
@@ -469,10 +470,6 @@ function getCustomClass(baseClass: string, task: GanttTask): string {
 
 function getOwnerSuffix(task: GanttTask): string {
   return task.owner ? ` · ${task.owner}` : "";
-}
-
-function getProjectColorClass(task: GanttTask): string {
-  return `project-bar-color-${task.color ?? "emerald"}`;
 }
 
 export function normalizeTaskForChartType(
@@ -525,7 +522,7 @@ export function normalizeTaskForChartType(
   return {
     ...task,
     name: `${task.name}${getOwnerSuffix(task)}`,
-    customClass: getProjectColorClass(task),
+    customClass: "project-bar-color",
   };
 }
 

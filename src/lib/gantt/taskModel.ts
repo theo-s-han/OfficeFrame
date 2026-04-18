@@ -12,13 +12,7 @@ export type GanttTaskStatus =
   | "at-risk"
   | "blocked"
   | "done";
-export type GanttTaskColor =
-  | "emerald"
-  | "teal"
-  | "gold"
-  | "coral"
-  | "indigo"
-  | "gray";
+export type GanttTaskColor = string;
 export type GanttBackgroundTemplate =
   | "clean"
   | "lined"
@@ -99,6 +93,9 @@ export type GanttDebugSnapshot = {
 };
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+const colorPattern = /^#[0-9a-fA-F]{6}$/;
+
+export const defaultGanttTaskColor = "#14745F";
 
 export const ganttTaskStatusOptions: Array<{
   value: GanttTaskStatus;
@@ -114,13 +111,20 @@ export const ganttTaskStatusOptions: Array<{
 export const ganttTaskColorOptions: Array<{
   value: GanttTaskColor;
   label: string;
+  description: string;
 }> = [
-  { value: "emerald", label: "에메랄드" },
-  { value: "teal", label: "틸" },
-  { value: "gold", label: "골드" },
-  { value: "coral", label: "코랄" },
-  { value: "indigo", label: "인디고" },
-  { value: "gray", label: "그레이" },
+  { value: "#14745F", label: "에메랄드", description: "안정적인 일정" },
+  { value: "#2F8F89", label: "틸", description: "협업 작업" },
+  { value: "#2F6F9F", label: "블루", description: "검토 항목" },
+  { value: "#4F6FAA", label: "인디고", description: "기술 작업" },
+  { value: "#B7831D", label: "골드", description: "마감/주의" },
+  { value: "#C75D4F", label: "코랄", description: "중요 일정" },
+  { value: "#B45F7A", label: "로즈", description: "승인/검수" },
+  { value: "#7A7F37", label: "올리브", description: "운영 작업" },
+  { value: "#3F7D5F", label: "그린", description: "진행 작업" },
+  { value: "#5A6A76", label: "스틸", description: "보조 일정" },
+  { value: "#8A6F2A", label: "브론즈", description: "리스크" },
+  { value: "#69736E", label: "그레이", description: "일반 항목" },
 ];
 
 export const ganttBackgroundTemplateOptions: Array<{
@@ -205,6 +209,18 @@ export function isValidDateInput(value: string): boolean {
   const date = new Date(`${value}T00:00:00`);
 
   return !Number.isNaN(date.getTime()) && formatDateForInput(date) === value;
+}
+
+export function isValidGanttTaskColor(value?: string): value is GanttTaskColor {
+  return typeof value === "string" && colorPattern.test(value);
+}
+
+export function normalizeGanttTaskColor(value?: string): GanttTaskColor {
+  if (!isValidGanttTaskColor(value)) {
+    return defaultGanttTaskColor;
+  }
+
+  return `#${value.slice(1).toUpperCase()}`;
 }
 
 export function compareDateInputs(left: string, right: string): number {
@@ -335,6 +351,14 @@ export function validateGanttTask(task: GanttTask): GanttValidationIssue[] {
       taskId: task.id,
       field: "progress",
       message: "진행률은 0부터 100 사이여야 합니다.",
+    });
+  }
+
+  if (task.color && !isValidGanttTaskColor(task.color)) {
+    issues.push({
+      taskId: task.id,
+      field: "color",
+      message: "색상은 #RRGGBB 형식이어야 합니다.",
     });
   }
 

@@ -521,6 +521,31 @@ button:disabled {
   background: white;
 }
 
+.color-picker-field {
+  min-width: 180px;
+}
+
+.color-picker-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  background: white;
+  font-weight: 700;
+}
+
+.color-swatch {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border: 1px solid rgba(32, 37, 34, 0.24);
+  border-radius: 6px;
+}
+
 .remove-task-button {
   min-height: 38px;
   align-self: end;
@@ -533,6 +558,144 @@ button:disabled {
   color: var(--color-warn);
   font-size: 13px;
   line-height: 1.45;
+}
+
+.color-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(32, 37, 34, 0.34);
+}
+
+.color-picker-dialog {
+  display: grid;
+  gap: 18px;
+  width: min(680px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 22px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.color-picker-header,
+.color-picker-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.color-picker-header h2 {
+  margin: 6px 0 0;
+  font-size: 24px;
+}
+
+.modal-close-button {
+  flex: 0 0 auto;
+}
+
+.color-picker-help {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+.color-picker-current {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  width: fit-content;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fbfcfb;
+}
+
+.color-picker-current-swatch {
+  display: inline-block;
+  width: 44px;
+  height: 28px;
+  border: 1px solid rgba(32, 37, 34, 0.22);
+  border-radius: 6px;
+}
+
+.color-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.color-preset-button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  min-height: 64px;
+  padding: 10px;
+  text-align: left;
+}
+
+.color-preset-button[aria-pressed="true"] {
+  border-color: var(--color-accent);
+  background: var(--color-surface-strong);
+}
+
+.color-preset-button strong,
+.color-preset-button small {
+  display: block;
+}
+
+.color-preset-button small {
+  margin-top: 2px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.custom-color-controls {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.7fr) minmax(180px, 1fr);
+  gap: 12px;
+}
+
+.custom-color-controls label {
+  display: grid;
+  gap: 6px;
+}
+
+.custom-color-controls label span {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.custom-color-controls input {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--color-text);
+  background: white;
+}
+
+.custom-color-controls input[type="color"] {
+  padding: 4px;
+}
+
+.color-picker-actions {
+  justify-content: flex-end;
+}
+
+.primary-action {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: white;
+  font-weight: 700;
 }
 
 .gantt-export-surface {
@@ -799,36 +962,11 @@ button:disabled {
   fill: var(--g-expected-progress);
 }
 
-.gantt-type-project .project-bar-color-emerald .bar {
+.gantt-type-project .project-bar-color .bar {
   fill: #14745f;
 }
 
-.gantt-type-project .project-bar-color-teal .bar {
-  fill: #2f8f89;
-}
-
-.gantt-type-project .project-bar-color-gold .bar {
-  fill: #b7831d;
-}
-
-.gantt-type-project .project-bar-color-coral .bar {
-  fill: #c75d4f;
-}
-
-.gantt-type-project .project-bar-color-indigo .bar {
-  fill: #4f6faa;
-}
-
-.gantt-type-project .project-bar-color-gray .bar {
-  fill: #69736e;
-}
-
-.gantt-type-project .project-bar-color-emerald .bar-progress,
-.gantt-type-project .project-bar-color-teal .bar-progress,
-.gantt-type-project .project-bar-color-gold .bar-progress,
-.gantt-type-project .project-bar-color-coral .bar-progress,
-.gantt-type-project .project-bar-color-indigo .bar-progress,
-.gantt-type-project .project-bar-color-gray .bar-progress {
+.gantt-type-project .project-bar-color .bar-progress {
   fill: rgba(32, 37, 34, 0.28);
 }
 
@@ -1066,5 +1204,21 @@ button:disabled {
   .task-editor-row.type-milestones,
   .task-editor-row.type-wbs {
     grid-template-columns: 1fr;
+  }
+
+  .color-picker-backdrop {
+    padding: 16px;
+  }
+
+  .color-picker-header,
+  .color-picker-actions,
+  .custom-color-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .color-picker-header,
+  .color-picker-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

@@ -26,7 +26,10 @@ import type {
   GanttTask,
   GanttViewMode,
 } from "@/lib/gantt/taskModel";
-import { isValidDateObject } from "@/lib/gantt/taskModel";
+import {
+  isValidDateObject,
+  normalizeGanttTaskColor,
+} from "@/lib/gantt/taskModel";
 
 export type GanttChartPreviewHandle = {
   scrollToToday: () => void;
@@ -74,6 +77,49 @@ function canRenderSvgGantt(): boolean {
     svgGraphicsPrototype !== null &&
     typeof svgGraphicsPrototype.getBBox === "function"
   );
+}
+
+function getProgressFill(color: string): string {
+  const normalizedColor = normalizeGanttTaskColor(color);
+  const red = parseInt(normalizedColor.slice(1, 3), 16);
+  const green = parseInt(normalizedColor.slice(3, 5), 16);
+  const blue = parseInt(normalizedColor.slice(5, 7), 16);
+
+  return `rgba(${Math.round(red * 0.25)}, ${Math.round(green * 0.25)}, ${Math.round(blue * 0.25)}, 0.34)`;
+}
+
+function applyProjectTaskColors(
+  wrapper: HTMLElement,
+  tasks: GanttTask[],
+  chartType: GanttChartType,
+) {
+  if (chartType !== "project") {
+    return;
+  }
+
+  const taskColors = new Map(
+    tasks.map((task) => [task.id, normalizeGanttTaskColor(task.color)]),
+  );
+
+  wrapper
+    .querySelectorAll<HTMLElement>(".bar-wrapper")
+    .forEach((barWrapper) => {
+      const taskId = barWrapper.getAttribute("data-id");
+      const color = taskId ? taskColors.get(taskId) : undefined;
+
+      if (!color) {
+        return;
+      }
+
+      const bar = barWrapper.querySelector<SVGElement>(".bar");
+      const progressBar = barWrapper.querySelector<SVGElement>(".bar-progress");
+      const progressFill = getProgressFill(color);
+
+      bar?.setAttribute("fill", color);
+      bar?.style.setProperty("fill", color);
+      progressBar?.setAttribute("fill", progressFill);
+      progressBar?.style.setProperty("fill", progressFill);
+    });
 }
 
 function formatQuarter(date: Date): string {
@@ -351,6 +397,7 @@ export const GanttChartPreview = forwardRef<
         });
         ganttRef.current = gantt;
         applyTimelineRange(gantt, timelineStart, timelineEnd, viewMode);
+        applyProjectTaskColors(wrapperRef.current, tasks, chartType);
         setStatus("");
         recordGanttDebugEvent(debugEnabled, "chart.render", {
           chartType,
@@ -380,6 +427,7 @@ export const GanttChartPreview = forwardRef<
     debugEnabled,
     frappeTasks,
     chartType,
+    tasks,
     timelineEnd,
     timelineStart,
     taskDateTargets,
