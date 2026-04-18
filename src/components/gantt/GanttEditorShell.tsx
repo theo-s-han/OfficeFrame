@@ -61,7 +61,10 @@ import {
   readGanttDebugEnabled,
   recordGanttDebugEvent,
 } from "@/lib/gantt/debug";
-import { stabilizeSvgAnimations } from "@/lib/gantt/svgExport";
+import {
+  inlineSvgPresentationStyles,
+  stabilizeSvgAnimations,
+} from "@/lib/gantt/svgExport";
 import { resolveGanttTaskVisual } from "@/lib/gantt/taskColorResolver";
 import {
   defaultGanttPalette,
@@ -627,6 +630,7 @@ function preparePreviewExportTarget(source: HTMLElement): PreparedExportTarget {
     node.style.background = exportBackground;
     node.style.backgroundColor = exportBackground;
   });
+  inlineSvgPresentationStyles(source, clone);
 
   stabilizeSvgAnimations(clone);
 
@@ -1333,11 +1337,7 @@ export function GanttEditorShell() {
 
     try {
       const { toPng } = await import("html-to-image");
-      const exportTarget =
-        previewRef.current.querySelector<HTMLElement>(
-          ".gantt-preview, .typed-gantt-preview",
-        ) ?? previewRef.current;
-      const preparedTarget = preparePreviewExportTarget(exportTarget);
+      const preparedTarget = preparePreviewExportTarget(previewRef.current);
 
       await new Promise<void>((resolve) => {
         window.requestAnimationFrame(() => {
