@@ -1,4 +1,5 @@
 import {
+  getGanttTaskStatusLabel,
   getTaskDependencyIds,
   type GanttChartType,
   type GanttTask,
@@ -45,15 +46,9 @@ export type JsGanttAdapterResult = {
 };
 
 export type MermaidAdapterResult = {
-  kind: "gantt" | "treeView" | "mindmap";
+  kind: "timeline" | "treeView" | "mindmap";
   title: string;
   definition: string;
-};
-
-const milestoneHeaders: JsGanttAdditionalHeaders = {
-  section: { title: "Section" },
-  status: { title: "Status", class: "gantt-status-column" },
-  owner: { title: "Owner" },
 };
 
 const wbsHeaders: JsGanttAdditionalHeaders = {
@@ -92,10 +87,6 @@ function cleanMermaidText(value?: string): string {
     .trim();
 }
 
-function cleanMermaidId(value: string): string {
-  return value.replace(/[^a-zA-Z0-9_-]/g, "-");
-}
-
 function getMilestoneDate(task: GanttTask): string {
   return task.date || task.start || task.end;
 }
@@ -104,49 +95,71 @@ function getWbsDate(task: GanttTask): string {
   return task.date || task.start || task.end;
 }
 
-export function createMilestoneJsGanttRows(
+function compareMilestonesByDate(left: GanttTask, right: GanttTask): number {
+  return (
+    getMilestoneDate(left).localeCompare(getMilestoneDate(right)) ||
+    cleanMermaidText(left.section).localeCompare(cleanMermaidText(right.section)) ||
+    cleanMermaidText(left.name).localeCompare(cleanMermaidText(right.name))
+  );
+}
+
+function getTimelineSectionLabel(task: GanttTask): string {
+  return cleanMermaidText(task.section || "마일스톤");
+}
+
+function getMilestoneStatusBadge(task: GanttTask): string {
+  const label = getGanttTaskStatusLabel(task.status);
+  return `[${label}]`;
+}
+
+function getMilestoneTimelineLabel(task: GanttTask): string {
+  const parts = [`${getMilestoneStatusBadge(task)} ${cleanMermaidText(task.name)}`];
+
+  if (task.owner) {
+    parts.push(cleanMermaidText(task.owner));
+  }
+
+  return parts.join(" · ");
+}
+
+export function createMilestoneMermaidTimeline(
   tasks: GanttTask[],
-): JsGanttAdapterResult {
-  const idMap = createIdMap(tasks);
+): MermaidAdapterResult {
+  const sortedTasks = [...tasks].sort(compareMilestonesByDate);
+  const sectionGroups = new Map<string, GanttTask[]>();
+
+  sortedTasks.forEach((task) => {
+    const section = getTimelineSectionLabel(task);
+    sectionGroups.set(section, [...(sectionGroups.get(section) ?? []), task]);
+  });
+
+  const lines = ["timeline", "    title 주요 일정 흐름"];
+
+  if (sortedTasks.length === 0) {
+    lines.push("    section 안내");
+    lines.push("        2026-01-01 : milestone을 추가하면 흐름이 표시됩니다.");
+  } else {
+    sectionGroups.forEach((sectionTasks, section) => {
+      lines.push(`    section ${section}`);
+      sectionTasks.forEach((task) => {
+        lines.push(
+          `        ${getMilestoneDate(task)} : ${getMilestoneTimelineLabel(task)}`,
+        );
+      });
+    });
+  }
 
   return {
-    rows: tasks.map((task) => {
-      const date = getMilestoneDate(task);
-
-      return {
-        pID: idMap.get(task.id) ?? 0,
-        pName: task.name,
-        pStart: date,
-        pEnd: date,
-        pClass: resolveGanttTaskVisual(task, {
-          chartType: "milestones",
-        }).cssClassName,
-        pLink: "",
-        pMile: 1,
-        pRes: task.owner ?? "",
-        pComp: 100,
-        pGroup: 0,
-        pParent: 0,
-        pOpen: 1,
-        pDepend: getNumericDependencyList(task, idMap),
-        pCaption: task.status ?? "",
-        pNotes: task.notes ?? "",
-        domainId: task.id,
-        section: task.section ?? "",
-        status: task.status ?? "",
-        owner: task.owner ?? "",
-        pDataObject: {
-          domainId: task.id,
-          section: task.section ?? "",
-          status: task.status ?? "",
-          owner: task.owner ?? "",
-        },
-        sourceId: task.id,
-      };
-    }),
-    additionalHeaders: milestoneHeaders,
+    kind: "timeline",
+    title: "마일스톤 흐름",
+    definition: lines.join("\n"),
   };
 }
+
+type TreeNode = {
+  task: GanttTask;
+  children: TreeNode[];
+};
 
 export function createWbsJsGanttRows(tasks: GanttTask[]): JsGanttAdapterResult {
   const idMap = createIdMap(tasks);
@@ -188,76 +201,6 @@ export function createWbsJsGanttRows(tasks: GanttTask[]): JsGanttAdapterResult {
     additionalHeaders: wbsHeaders,
   };
 }
-
-function getMermaidGanttTags(task: GanttTask): string[] {
-  const tags = ["milestone"];
-
-  if (task.status === "done") {
-    tags.unshift("done");
-  } else if (task.status === "on-track") {
-    tags.unshift("active");
-  }
-
-  if (task.critical || task.status === "at-risk" || task.status === "blocked") {
-    tags.unshift("crit");
-  }
-
-  return tags;
-}
-
-export function createMilestoneMermaidGantt(
-  tasks: GanttTask[],
-): MermaidAdapterResult {
-  const lines = [
-    "gantt",
-    "    title Milestone Plan",
-    "    dateFormat YYYY-MM-DD",
-    "    axisFormat %m/%d",
-    "    tickInterval 1week",
-    "    weekday monday",
-    "    todayMarker off",
-  ];
-  const sectionGroups = new Map<string, GanttTask[]>();
-
-  tasks.forEach((task) => {
-    const section = cleanMermaidText(task.section || "Milestones");
-    sectionGroups.set(section, [...(sectionGroups.get(section) ?? []), task]);
-  });
-
-  sectionGroups.forEach((sectionTasks, section) => {
-    lines.push(`    section ${section}`);
-    sectionTasks.forEach((task) => {
-      const id = cleanMermaidId(task.id);
-      const tags = getMermaidGanttTags(task).join(", ");
-      const dependsOn = getTaskDependencyIds(task)
-        .map(cleanMermaidId)
-        .filter(Boolean)
-        .join(" ");
-      const start = dependsOn ? `after ${dependsOn}` : getMilestoneDate(task);
-
-      lines.push(
-        `    ${cleanMermaidText(task.name)} :${tags}, ${id}, ${start}, 1d`,
-      );
-
-      if (task.critical) {
-        lines.push(
-          `    ${cleanMermaidText(task.name)} deadline :vert, ${id}-vert, ${getMilestoneDate(task)}, 0d`,
-        );
-      }
-    });
-  });
-
-  return {
-    kind: "gantt",
-    title: "Mermaid Gantt",
-    definition: lines.join("\n"),
-  };
-}
-
-type TreeNode = {
-  task: GanttTask;
-  children: TreeNode[];
-};
 
 function buildWbsTree(tasks: GanttTask[]): TreeNode[] {
   const nodeMap = new Map<string, TreeNode>(
@@ -335,5 +278,8 @@ export function createJsGanttRowsForType(
     return createWbsJsGanttRows(tasks);
   }
 
-  return createMilestoneJsGanttRows(tasks);
+  return {
+    rows: [],
+    additionalHeaders: {},
+  };
 }

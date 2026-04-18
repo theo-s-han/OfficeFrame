@@ -66,14 +66,16 @@ Roadmap형과 진행률 추적형은 제공하지 않는다.
 
 ### 마일스톤형 UX
 
-- 입력 필드: id, name, date, section, status, dependsOn, owner, notes, critical
+- 입력 필드: 이름(name), 날짜(date), 섹션(section), 이전 단계, 상태(status), 담당자(owner), 설명(notes)
+- `id`는 사용자에게 노출하지 않고 내부에서 자동 생성한다.
+- "Depends on" 같은 개발자 용어는 노출하지 않는다.
 - 기간형 작업처럼 Start/End/Progress를 요구하지 않는다.
 - date 입력은 표시 단위와 무관하게 항상 `YYYY-MM-DD` date input으로 유지한다.
-- status는 `planned`, `on-track`, `done`만 제공하고 row를 늘리는 구조 데이터가 아니라 badge/marker style로만 표시한다.
-- interactive preview는 jsGanttImproved milestone row를 사용한다.
-- document preview는 Mermaid Gantt DSL과 SVG preview를 사용한다.
-- milestone-only sample은 4~6주 범위에서 5개 이상 milestone이 자연스럽게 퍼져 보이도록 구성한다.
-- critical 항목은 Mermaid에서 `crit`와 `vert` marker로 강조한다.
+- "이전 단계"는 기존 milestone 목록에서 고르는 선택 UI로 제공하고, "없음" 옵션을 포함한다.
+- status는 `planned`, `on-track`, `done`만 제공하고 row를 늘리는 구조 데이터가 아니라 badge/label 정보로만 표시한다.
+- preview는 1개만 보여주며 Mermaid Timeline 기반 문서형 결과만 사용한다.
+- renderer 이름, DSL 같은 개발자 중심 용어는 milestone 화면에 노출하지 않는다.
+- milestone-only sample은 6~8개 milestone, 5~10일 간격, 3~5개 section 기준으로 처음부터 자연스럽게 보이도록 구성한다.
 
 ### WBS/단계형 UX
 

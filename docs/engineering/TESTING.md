@@ -49,12 +49,12 @@ npm run build
 - row editor는 내부 고정 스크롤 없이 작업 수만큼 아래로 확장된다.
 - preview task 클릭 시 해당 입력 row가 선택되고 focus 된다.
 - invalid drag 결과는 기존 task 값을 유지하고 debug event를 남긴다.
-- 마일스톤형은 id/name/date/section/status/dependsOn/owner/notes/critical 입력을 제공한다.
+- 마일스톤형은 이름/날짜/섹션/이전 단계/상태/담당자/설명 입력을 제공한다.
 - 마일스톤형 date 입력은 표시 단위와 무관하게 `YYYY-MM-DD` 하루 단위다.
-- 마일스톤형 기본 샘플은 2026-04-20 ~ 2026-05-27 범위의 8개 milestone을 보여준다.
-- 마일스톤형 status는 별도 row가 아니라 badge/marker style로만 보이고 `planned/on-track/done`만 선택된다.
-- 마일스톤형 validation은 날짜 형식, self dependency, 존재하지 않는 dependency, 허용되지 않은 status를 즉시 보여준다.
-- 마일스톤형은 jsGanttImproved interactive preview와 Mermaid Gantt document preview를 분리해 보여준다.
+- 마일스톤형 기본 샘플은 6~8개 milestone이 5~10일 간격으로 배치되고 3~5개 section으로 묶여 보인다.
+- 마일스톤형 status는 별도 row가 아니라 badge/text 정보로만 보이고 `planned/on-track/done`만 선택된다.
+- 마일스톤형 validation은 날짜 형식, self dependency, 존재하지 않는 dependency, 순환 dependency, 허용되지 않은 status를 즉시 보여준다.
+- 마일스톤형은 Mermaid Timeline preview 1개만 보여주고 jsGantt milestone preview는 노출하지 않는다.
 - WBS형은 id/code/name/parentId/nodeType/start/end/date/progress/owner/stage/dependsOn/notes/open 입력을 제공한다.
 - WBS형은 group/task/milestone nodeType에 따라 필요한 날짜 입력이 달라진다.
 - WBS형은 jsGanttImproved schedule preview, Mermaid TreeView, Mermaid Mindmap을 분리해 보여준다.

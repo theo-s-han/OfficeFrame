@@ -1250,18 +1250,20 @@ button:disabled {
   font-size: 15px;
 }
 
+.typed-gantt-preview.typed-gantt-milestones {
+  height: 100%;
+}
+
+.typed-gantt-preview.typed-gantt-milestones .adapter-preview-section {
+  height: 100%;
+}
+
 .jsgantt-adapter-preview {
   min-height: 420px;
   max-height: min(64vh, 620px);
   overflow: auto;
   padding: 12px;
   background: var(--gantt-background);
-}
-
-.jsgantt-adapter-preview.jsgantt-milestones {
-  min-height: 360px;
-  max-height: min(58vh, 540px);
-  padding: 10px;
 }
 
 .jsgantt-adapter-preview table {
@@ -1273,10 +1275,6 @@ button:disabled {
   min-width: 980px;
   color: var(--gantt-text-primary);
   font-size: 12px;
-}
-
-.jsgantt-adapter-preview.jsgantt-milestones .gchartcontainer {
-  min-width: 860px;
 }
 
 .jsgantt-adapter-preview .gcharttable,
@@ -1307,64 +1305,8 @@ button:disabled {
   font-weight: 700;
 }
 
-.jsgantt-adapter-preview.jsgantt-milestones .gtaskname {
-  min-width: 132px;
-  max-width: 172px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .jsgantt-adapter-preview .gadditional {
   min-width: 74px;
-}
-
-.jsgantt-adapter-preview.jsgantt-milestones .gadditional {
-  min-width: 54px;
-  max-width: 86px;
-}
-
-.jsgantt-adapter-preview.jsgantt-milestones .gadditional.gantt-status-column,
-.jsgantt-adapter-preview.jsgantt-milestones .gantt-status-column {
-  width: 64px;
-}
-
-.jsgantt-adapter-preview .gmilecaption.gantt-status-badge,
-.jsgantt-adapter-preview .gantt-status-column .gantt-status-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: auto !important;
-  min-width: 54px;
-  height: 20px;
-  margin-top: -4px;
-  border: 1px solid var(--gantt-row-divider);
-  border-radius: 8px;
-  padding: 0 8px;
-  color: var(--gantt-text-secondary);
-  background: var(--gantt-surface);
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.jsgantt-adapter-preview .gmilecaption.gantt-status-done,
-.jsgantt-adapter-preview .gantt-status-column .gantt-status-done {
-  border-color: color-mix(in srgb, var(--gantt-success) 34%, white);
-  color: var(--gantt-success);
-  background: color-mix(in srgb, var(--gantt-success) 12%, white);
-}
-
-.jsgantt-adapter-preview .gmilecaption.gantt-status-on-track,
-.jsgantt-adapter-preview .gantt-status-column .gantt-status-on-track {
-  border-color: color-mix(in srgb, var(--gantt-task-1) 34%, white);
-  color: var(--gantt-task-1);
-  background: color-mix(in srgb, var(--gantt-task-1) 12%, white);
-}
-
-.jsgantt-adapter-preview .gmilecaption.gantt-status-planned,
-.jsgantt-adapter-preview .gantt-status-column .gantt-status-planned {
-  border-color: var(--gantt-grid-line);
-  color: var(--gantt-text-secondary);
-  background: var(--gantt-surface);
 }
 
 .jsgantt-adapter-preview .gtaskblue,
@@ -1502,14 +1444,25 @@ button:disabled {
   background: var(--gantt-background);
 }
 
-.mermaid-kind-gantt .mermaid-preview {
-  min-height: 300px;
-  max-height: min(56vh, 520px);
+.mermaid-kind-timeline .mermaid-preview {
+  min-height: 360px;
+  max-height: min(60vh, 640px);
+  padding: 20px 18px 24px;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--gantt-surface) 72%, white),
+      var(--gantt-background)
+    );
 }
 
 .mermaid-preview svg {
   max-width: 100%;
   height: auto;
+}
+
+.typed-gantt-milestones .mermaid-preview svg {
+  min-width: 680px;
 }
 
 .mermaid-source {

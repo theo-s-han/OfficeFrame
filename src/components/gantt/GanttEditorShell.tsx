@@ -1549,20 +1549,15 @@ export function GanttEditorShell() {
   }
 
   function renderMilestoneTaskRow(task: GanttTask) {
+    const previousStepOptions = state.tasks.filter(
+      (candidate) => candidate.id !== task.id,
+    );
+    const previousStepValue = task.dependsOn?.[0] ?? "";
+
     return (
       <>
         <label>
-          <span>ID</span>
-          <input
-            aria-label={`${task.name} id`}
-            value={task.id}
-            onChange={(event) =>
-              handleTaskChange(task.id, "id", event.target.value)
-            }
-          />
-        </label>
-        <label>
-          <span>Name</span>
+          <span>이름</span>
           <input
             aria-label={`${task.name} 이름`}
             value={task.name}
@@ -1572,7 +1567,7 @@ export function GanttEditorShell() {
           />
         </label>
         <label>
-          <span>Date</span>
+          <span>날짜</span>
           <DateUnitInput
             ariaLabel={`${task.name} 날짜`}
             value={task.date || task.start}
@@ -1580,9 +1575,9 @@ export function GanttEditorShell() {
           />
         </label>
         <label>
-          <span>Section</span>
+          <span>섹션</span>
           <input
-            aria-label={`${task.name} section`}
+            aria-label={`${task.name} 섹션`}
             value={task.section ?? ""}
             onChange={(event) =>
               handleTaskChange(task.id, "section", event.target.value)
@@ -1590,7 +1585,28 @@ export function GanttEditorShell() {
           />
         </label>
         <label>
-          <span>Status</span>
+          <span>이전 단계</span>
+          <select
+            aria-label={`${task.name} 이전 단계`}
+            value={previousStepValue}
+            onChange={(event) =>
+              handleTaskChange(
+                task.id,
+                "dependsOn",
+                event.target.value ? [event.target.value] : [],
+              )
+            }
+          >
+            <option value="">없음</option>
+            {previousStepOptions.map((candidate) => (
+              <option key={candidate.id} value={candidate.id}>
+                {candidate.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>상태</span>
           <select
             aria-label={`${task.name} 상태`}
             value={task.status ?? "planned"}
@@ -1606,18 +1622,7 @@ export function GanttEditorShell() {
           </select>
         </label>
         <label>
-          <span>Depends on</span>
-          <input
-            aria-label={`${task.name} dependsOn`}
-            placeholder="ms-scope, ms-design"
-            value={(task.dependsOn ?? []).join(", ")}
-            onChange={(event) =>
-              handleDependenciesChange(task.id, event.target.value)
-            }
-          />
-        </label>
-        <label>
-          <span>Owner</span>
+          <span>담당자</span>
           <input
             aria-label={`${task.name} 담당자`}
             value={task.owner ?? ""}
@@ -1626,21 +1631,10 @@ export function GanttEditorShell() {
             }
           />
         </label>
-        <label className="checkbox-field">
-          <input
-            aria-label={`${task.name} critical`}
-            checked={Boolean(task.critical)}
-            type="checkbox"
-            onChange={(event) =>
-              handleTaskChange(task.id, "critical", event.target.checked)
-            }
-          />
-          <span>Critical</span>
-        </label>
         <label className="wide-field">
-          <span>Notes</span>
+          <span>설명</span>
           <textarea
-            aria-label={`${task.name} notes`}
+            aria-label={`${task.name} 설명`}
             value={task.notes ?? ""}
             onChange={(event) =>
               handleTaskChange(task.id, "notes", event.target.value)

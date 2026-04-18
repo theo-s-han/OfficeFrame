@@ -48,6 +48,7 @@
 | 14   | PLAN-014 | 이미지 출력과 Enterprise palette | Done     | preview를 이미지로 생성/다운로드하는 흐름을 추가하고 간트 전용 기업형 palette/token 구조를 만든다.                                | 이미지 생성 후 화면에서 확인하고 다운로드할 수 있으며, task/group/milestone/progress/dependency/grid 색상이 Enterprise Light palette 규칙으로 적용된다.                                              | PLAN-013                  |
 | 15   | PLAN-015 | milestone-only preview 정리      | Done     | milestone 전용 샘플, 검증, adapter, preview layout을 정리해 단일 날짜 마일스톤 데이터만으로 자연스러운 차트를 만든다.             | 5개 이상 milestone 샘플이 4~6주 범위에 자연스럽게 배치되고, self/missing dependency와 invalid status/date가 막히며 status는 row가 아닌 스타일로만 쓰인다.                                            | PLAN-013                  |
 | 16   | PLAN-016 | toolbar/export/timeline UX 정리  | Done     | 오늘 이동 제거, 차트 전용 이미지 export 단일화, 표시 시작/종료 date 입력 고정, Week 세로 가이드, Week/Month 간격 조절을 정리한다. | toolbar가 예시 데이터/전체 초기화/이미지로 내보내기로 정리되고, 표시 범위는 항상 `YYYY-MM-DD` date input이며, 기본형 Week 세로 가이드와 Week/Month 간격 슬라이더가 preview와 export 흐름에 반영된다. | PLAN-014, PLAN-015        |
+| 17   | PLAN-017 | milestone v1 재설계              | Done        | milestone 기능을 입력-단일 preview-PNG 다운로드 흐름으로 다시 설계하고, 개발자 중심 입력과 이중 renderer 구조를 제거한다.        | milestone 화면에서 Mermaid Timeline preview 1개만 보이고, id/dependsOn이 숨겨지며, "이전 단계" 선택 UI/검증/PNG 다운로드/샘플 데이터가 문서형 흐름에 맞게 동작한다.                                   | PLAN-015, PLAN-016        |
 
 ## 운영 규칙
 

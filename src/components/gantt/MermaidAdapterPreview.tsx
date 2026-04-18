@@ -8,16 +8,18 @@ import { defaultGanttPalette } from "@/lib/gantt/theme";
 type MermaidAdapterPreviewProps = {
   adapterResult: MermaidAdapterResult;
   debugEnabled: boolean;
+  showSource?: boolean;
 };
 
 export function MermaidAdapterPreview({
   adapterResult,
   debugEnabled,
+  showSource = true,
 }: MermaidAdapterPreviewProps) {
   const rawId = useId();
   const renderId = `mermaid-${rawId.replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const [svg, setSvg] = useState("");
-  const [status, setStatus] = useState("Mermaid preview를 준비하고 있습니다.");
+  const [status, setStatus] = useState("미리보기를 준비하고 있습니다.");
 
   useEffect(() => {
     let isMounted = true;
@@ -68,7 +70,9 @@ export function MermaidAdapterPreview({
 
         setSvg("");
         setStatus(
-          "Mermaid preview를 불러오지 못했습니다. 아래 DSL을 확인하세요.",
+          showSource
+            ? "미리보기를 불러오지 못했습니다. 아래 DSL을 확인하세요."
+            : "미리보기를 불러오지 못했습니다.",
         );
         recordGanttDebugEvent(debugEnabled, "adapter.mermaid.error", {
           definition: adapterResult.definition,
@@ -84,7 +88,7 @@ export function MermaidAdapterPreview({
     return () => {
       isMounted = false;
     };
-  }, [adapterResult, debugEnabled, renderId]);
+  }, [adapterResult, debugEnabled, renderId, showSource]);
 
   return (
     <section
@@ -98,10 +102,12 @@ export function MermaidAdapterPreview({
         />
       ) : null}
       {status ? <p className="gantt-preview-status">{status}</p> : null}
-      <details className="mermaid-source">
-        <summary>문서용 DSL</summary>
-        <pre>{adapterResult.definition}</pre>
-      </details>
+      {showSource ? (
+        <details className="mermaid-source">
+          <summary>문서용 DSL</summary>
+          <pre>{adapterResult.definition}</pre>
+        </details>
+      ) : null}
     </section>
   );
 }

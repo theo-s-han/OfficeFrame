@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { GanttEditorShell } from "@/components/gantt/GanttEditorShell";
 
@@ -127,10 +127,12 @@ describe("GanttEditorShell", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /마일스톤형/ }));
 
-    expect(screen.getByText("마일스톤 preview")).toBeInTheDocument();
-    expect(screen.getByLabelText("프로젝트 킥오프 id")).toHaveValue(
-      "ms-kickoff",
-    );
+    expect(
+      screen.getByRole("heading", { level: 2, name: "마일스톤 흐름" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("프로젝트 킥오프 id"),
+    ).not.toBeInTheDocument();
     expect(screen.getByLabelText("프로젝트 킥오프 날짜")).toHaveAttribute(
       "type",
       "date",
@@ -138,20 +140,32 @@ describe("GanttEditorShell", () => {
     expect(screen.getByLabelText("프로젝트 킥오프 날짜")).toHaveValue(
       "2026-04-20",
     );
-    expect(screen.getByLabelText("프로젝트 킥오프 section")).toHaveValue(
+    expect(screen.getByLabelText("프로젝트 킥오프 섹션")).toHaveValue(
       "기획",
     );
     expect(screen.getByLabelText("프로젝트 킥오프 상태")).toHaveValue("done");
-    expect(screen.getByLabelText("프로젝트 킥오프 critical")).not.toBeChecked();
+    expect(screen.getByLabelText("프로젝트 킥오프 이전 단계")).toHaveValue("");
+    expect(
+      within(screen.getByLabelText("프로젝트 킥오프 이전 단계")).getByRole(
+        "option",
+        { name: "범위 승인" },
+      ),
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("option", { name: "위험" }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("option", { name: "차단" }),
     ).not.toBeInTheDocument();
-    expect(screen.getByText("Mermaid Gantt")).toBeInTheDocument();
+    expect(screen.queryByText("Mermaid Gantt")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Milestone interactive renderer"),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByLabelText("프로젝트 킥오프 종료"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("문서용 DSL"),
     ).not.toBeInTheDocument();
   });
 

@@ -49,6 +49,8 @@ describe("gantt chart type presets", () => {
     const sample = getSampleTasksForChartType("milestones");
 
     expect(milestoneType?.defaultViewMode).toBe("Week");
+    expect(milestoneType?.previewTitle).toBe("마일스톤 흐름");
+    expect(milestoneType?.dependenciesLabel).toBe("이전 단계");
     expect(sample).toHaveLength(8);
     expect(sample[0]).toMatchObject({
       id: "ms-kickoff",
@@ -57,9 +59,10 @@ describe("gantt chart type presets", () => {
       status: "done",
       dependsOn: [],
     });
+    expect(sample[1].date).toBe("2026-04-27");
     expect(sample.at(-1)).toMatchObject({
       id: "ms-release",
-      date: "2026-05-27",
+      date: "2026-06-10",
       section: "릴리즈",
       status: "planned",
       dependsOn: ["ms-qa"],
@@ -128,8 +131,8 @@ describe("gantt chart type presets", () => {
       name: "새 마일스톤",
       date: expect.any(String),
       progress: 100,
+      section: "기획",
       dependsOn: [],
-      critical: false,
     });
 
     expect(createEmptyTaskForChartType([], "wbs")).toMatchObject({
