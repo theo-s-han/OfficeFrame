@@ -11,6 +11,7 @@ import {
   normalizeGanttTaskColor,
   removeGanttTask,
   updateGanttTask,
+  updateGanttTaskId,
   validateGanttTasks,
   type GanttTask,
 } from "./taskModel";
@@ -46,6 +47,36 @@ describe("gantt task model test entry points", () => {
         progress: 45,
       },
     ]);
+  });
+
+  it("updates task ids and keeps references connected", () => {
+    const updated = updateGanttTaskId(
+      [
+        {
+          id: "parent",
+          name: "Parent",
+          start: "",
+          end: "",
+          progress: 0,
+        },
+        {
+          id: "child",
+          name: "Child",
+          parentId: "parent",
+          start: "2026-05-01",
+          end: "2026-05-02",
+          progress: 0,
+          dependsOn: ["parent"],
+        },
+      ],
+      "parent",
+      "renamed-parent",
+    );
+
+    expect(updated[1]).toMatchObject({
+      parentId: "renamed-parent",
+      dependsOn: ["renamed-parent"],
+    });
   });
 
   it("applies chart drag results to task dates and progress", () => {
@@ -112,8 +143,8 @@ describe("gantt task model test entry points", () => {
 
   it("normalizes and validates HEX task colors", () => {
     expect(normalizeGanttTaskColor("#c75d4f")).toBe("#C75D4F");
-    expect(normalizeGanttTaskColor("not-a-color")).toBe("#14745F");
-    expect(isValidGanttTaskColor("#4F6FAA")).toBe(true);
+    expect(normalizeGanttTaskColor("not-a-color")).toBe("#5B6EE1");
+    expect(isValidGanttTaskColor("#2F7E9E")).toBe(true);
     expect(isValidGanttTaskColor("coral")).toBe(false);
     expect(
       validateGanttTasks([
@@ -127,12 +158,173 @@ describe("gantt task model test entry points", () => {
         },
       ]),
     ).toEqual([
-      {
+      expect.objectContaining({
         taskId: "task-1",
         field: "color",
-        message: "색상은 #RRGGBB 형식이어야 합니다.",
-      },
+      }),
     ]);
+  });
+
+  it("validates milestone ids, dates, dependencies, and cycles", () => {
+    const milestoneIssues = validateGanttTasks(
+      [
+        {
+          id: "ms-1",
+          name: "범위 승인",
+          date: "",
+          start: "",
+          end: "",
+          progress: 100,
+          dependsOn: ["missing"],
+        },
+        {
+          id: "ms-1",
+          name: "릴리즈",
+          date: "2026-05-01",
+          start: "2026-05-01",
+          end: "2026-05-01",
+          progress: 100,
+          dependsOn: ["ms-1"],
+        },
+      ],
+      "milestones",
+    );
+
+    expect(milestoneIssues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: "date" }),
+        expect.objectContaining({ field: "id" }),
+        expect.objectContaining({
+          field: "dependsOn",
+          message: "존재하지 않는 의존성 ID입니다.",
+        }),
+        expect.objectContaining({
+          field: "dependsOn",
+          message: "자기 자신을 dependsOn으로 참조할 수 없습니다.",
+        }),
+      ]),
+    );
+  });
+
+  it("rejects milestone-only month dates, missing dependencies, self dependencies, and invalid statuses", () => {
+    const milestoneIssues = validateGanttTasks(
+      [
+        {
+          id: "ms-month",
+          name: "월 단위 입력",
+          date: "2026-04",
+          start: "",
+          end: "",
+          progress: 100,
+          status: "planned",
+          dependsOn: [],
+        },
+        {
+          id: "ms-self",
+          name: "자기 참조",
+          date: "2026-04-20",
+          start: "2026-04-20",
+          end: "2026-04-20",
+          progress: 100,
+          status: "planned",
+          dependsOn: ["ms-self"],
+        },
+        {
+          id: "ms-missing",
+          name: "누락 참조",
+          date: "2026-04-24",
+          start: "2026-04-24",
+          end: "2026-04-24",
+          progress: 100,
+          status: "done",
+          dependsOn: ["missing"],
+        },
+        {
+          id: "ms-status",
+          name: "잘못된 상태",
+          date: "2026-04-28",
+          start: "2026-04-28",
+          end: "2026-04-28",
+          progress: 100,
+          status: "blocked",
+          dependsOn: [],
+        },
+      ],
+      "milestones",
+    );
+
+    expect(milestoneIssues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          taskId: "ms-month",
+          field: "date",
+          message: "마일스톤 날짜는 YYYY-MM-DD 하루 단위 날짜여야 합니다.",
+        }),
+        expect.objectContaining({
+          taskId: "ms-self",
+          field: "dependsOn",
+          message: "자기 자신을 dependsOn으로 참조할 수 없습니다.",
+        }),
+        expect.objectContaining({
+          taskId: "ms-missing",
+          field: "dependsOn",
+          message: "존재하지 않는 의존성 ID입니다.",
+        }),
+        expect.objectContaining({
+          taskId: "ms-status",
+          field: "status",
+          message:
+            "마일스톤 상태는 planned, on-track, done만 사용할 수 있습니다.",
+        }),
+      ]),
+    );
+  });
+
+  it("validates WBS hierarchy, code uniqueness, and node-specific dates", () => {
+    const wbsIssues = validateGanttTasks(
+      [
+        {
+          id: "group-1",
+          code: "1",
+          name: "기획",
+          parentId: "missing-parent",
+          nodeType: "group",
+          start: "",
+          end: "",
+          progress: 0,
+        },
+        {
+          id: "task-1",
+          code: "1",
+          name: "작업",
+          parentId: "group-1",
+          nodeType: "task",
+          start: "2026-05-10",
+          end: "2026-05-01",
+          progress: 50,
+        },
+        {
+          id: "mile-1",
+          code: "2",
+          name: "승인",
+          parentId: "group-1",
+          nodeType: "milestone",
+          start: "",
+          end: "",
+          progress: 100,
+        },
+      ],
+      "wbs",
+    );
+
+    expect(wbsIssues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: "parentId" }),
+        expect.objectContaining({ field: "code" }),
+        expect.objectContaining({ field: "end" }),
+        expect.objectContaining({ field: "date" }),
+      ]),
+    );
   });
 
   it("creates a compact debug snapshot for Codex inspection", () => {

@@ -21,15 +21,14 @@ import {
   getWeekOfMonthLabel,
   parseDateInput,
 } from "@/lib/gantt/dateUnits";
+import { resolveGanttTaskVisual } from "@/lib/gantt/taskColorResolver";
 import type {
   GanttChartType,
   GanttTask,
   GanttViewMode,
 } from "@/lib/gantt/taskModel";
-import {
-  isValidDateObject,
-  normalizeGanttTaskColor,
-} from "@/lib/gantt/taskModel";
+import { isValidDateObject } from "@/lib/gantt/taskModel";
+import { TypedGanttPreview } from "./TypedGanttPreview";
 
 export type GanttChartPreviewHandle = {
   scrollToToday: () => void;
@@ -79,15 +78,6 @@ function canRenderSvgGantt(): boolean {
   );
 }
 
-function getProgressFill(color: string): string {
-  const normalizedColor = normalizeGanttTaskColor(color);
-  const red = parseInt(normalizedColor.slice(1, 3), 16);
-  const green = parseInt(normalizedColor.slice(3, 5), 16);
-  const blue = parseInt(normalizedColor.slice(5, 7), 16);
-
-  return `rgba(${Math.round(red * 0.25)}, ${Math.round(green * 0.25)}, ${Math.round(blue * 0.25)}, 0.34)`;
-}
-
 function applyProjectTaskColors(
   wrapper: HTMLElement,
   tasks: GanttTask[],
@@ -97,28 +87,44 @@ function applyProjectTaskColors(
     return;
   }
 
-  const taskColors = new Map(
-    tasks.map((task) => [task.id, normalizeGanttTaskColor(task.color)]),
+  const taskVisuals = new Map(
+    tasks.map((task) => [task.id, resolveGanttTaskVisual(task, { chartType })]),
   );
 
   wrapper
     .querySelectorAll<HTMLElement>(".bar-wrapper")
     .forEach((barWrapper) => {
       const taskId = barWrapper.getAttribute("data-id");
-      const color = taskId ? taskColors.get(taskId) : undefined;
+      const visual = taskId ? taskVisuals.get(taskId) : undefined;
 
-      if (!color) {
+      if (!visual) {
         return;
       }
 
       const bar = barWrapper.querySelector<SVGElement>(".bar");
       const progressBar = barWrapper.querySelector<SVGElement>(".bar-progress");
-      const progressFill = getProgressFill(color);
 
-      bar?.setAttribute("fill", color);
-      bar?.style.setProperty("fill", color);
-      progressBar?.setAttribute("fill", progressFill);
-      progressBar?.style.setProperty("fill", progressFill);
+      barWrapper.dataset.ganttColorSource = visual.colorSource;
+      barWrapper.dataset.ganttPaletteIndex = String(visual.paletteIndex);
+      barWrapper.style.setProperty("--gantt-task-color", visual.baseColor);
+      barWrapper.style.setProperty(
+        "--gantt-task-progress",
+        visual.progressColor,
+      );
+      barWrapper.style.setProperty(
+        "--gantt-task-remaining",
+        visual.remainingColor,
+      );
+      barWrapper.style.setProperty("--gantt-task-border", visual.borderColor);
+
+      bar?.setAttribute("fill", visual.remainingColor);
+      bar?.setAttribute("stroke", visual.baseColor);
+      bar?.setAttribute("stroke-width", "0.8");
+      bar?.style.setProperty("fill", visual.remainingColor);
+      bar?.style.setProperty("stroke", visual.baseColor);
+      bar?.style.setProperty("stroke-width", "0.8");
+      progressBar?.setAttribute("fill", visual.progressColor);
+      progressBar?.style.setProperty("fill", visual.progressColor);
     });
 }
 
@@ -282,6 +288,13 @@ export const GanttChartPreview = forwardRef<
         return;
       }
 
+      if (chartType !== "project") {
+        wrapperRef.current.innerHTML = "";
+        ganttRef.current = null;
+        setStatus("");
+        return;
+      }
+
       if (frappeTasks.length === 0) {
         wrapperRef.current.innerHTML = "";
         ganttRef.current = null;
@@ -329,10 +342,9 @@ export const GanttChartPreview = forwardRef<
           lines: "both",
           move_dependencies: false,
           popup_on: "click",
-          readonly_progress:
-            chartType === "roadmap" || chartType === "milestones",
+          readonly_progress: false,
           scroll_to: "start",
-          show_expected_progress: chartType === "progress",
+          show_expected_progress: false,
           today_button: false,
           view_mode_select: false,
           on_click: (task) => {
@@ -434,6 +446,16 @@ export const GanttChartPreview = forwardRef<
     taskSelectionIds,
     viewMode,
   ]);
+
+  if (chartType !== "project") {
+    return (
+      <TypedGanttPreview
+        chartType={chartType}
+        debugEnabled={debugEnabled}
+        tasks={tasks}
+      />
+    );
+  }
 
   return (
     <div className="gantt-preview" aria-label="간트 차트 preview">

@@ -2,137 +2,147 @@
 
 ## 목적
 
-간트 차트 도구가 사용자에게 어떤 입력을 받고, 어떤 방식으로 preview와 PNG 결과물을 만드는지 정의한다.
-이 문서는 구현된 기능과 가까운 다음 단계 기능을 함께 관리한다.
+간트 차트 도구가 사용자에게 어떤 입력값을 받고, 어떤 렌더러로 preview와 PNG 결과물을 만드는지 정의한다. 현재 구현 범위는 기본 일정표, 마일스톤형, WBS/단계형 3가지다.
 
 ## 오픈소스 선택
 
-- 1차 렌더러는 `frappe-gantt`를 사용한다.
-- 선택 이유는 MIT 라이선스, 가벼운 의존성, drag 기반 일정 수정, progress 수정, 보기 단위 전환을 제공하기 때문이다.
-- PNG export는 preview DOM을 기준으로 생성한다.
+- 기본 일정표: `frappe-gantt`
+  - drag 기반 일정/진행률 수정과 Day/Week/Month 커스텀 view에 적합하다.
+- 마일스톤형/WBS 일정 preview: `jsgantt-improved`
+  - `pMile`, `pGroup`, `pParent`, `pOpen`, `pDepend`, `setAdditionalHeaders`를 제공해 milestone과 WBS 계층 표현에 적합하다.
+- 문서용 정적 preview: `mermaid`
+  - Gantt의 `milestone`, `after`, `vert`, WBS용 `treeView-beta`, 발표용 `mindmap` DSL을 제공한다.
+- 화면 컴포넌트는 오픈소스 API를 직접 호출하지 않고 renderer adapter를 통해 변환된 결과만 사용한다.
+- PNG 이미지 생성/다운로드를 우선 지원한다. Mermaid preview는 SVG로 렌더링되므로 SVG 저장 확장은 후속 작업에서 추가할 수 있다.
 
-## MVP 포함 범위
+## 공통 구조
 
-- 작업 목록 추가, 수정, 삭제
-- 작업명, 시작일, 종료일, 진행률 입력
-- 간트 타입 선택
-- 1일, 주, 월, 분기 날짜 단위 전환
-- 표시 시작/종료 범위 지정
-- 차트 막대 drag/resize를 통한 일정 수정
-- 차트 진행률 drag를 통한 진행률 수정
-- 빈 작업명, 잘못된 날짜, 종료일이 시작일보다 빠른 경우, 진행률 범위 오류 validation
-- 예시 데이터 복원, 전체 초기화
-- preview PNG 다운로드
-- opt-in debug mode에서 값 흐름 로그 확인
+- editor shell은 type selector, toolbar, 날짜 단위/표시 범위, preview, row editor로 구성한다.
+- 내부 데이터는 `GanttTask` DSL을 중심으로 유지한다.
+- chart type별 입력 필드는 UI에서 분기하지만, preview에는 adapter가 변환한 renderer 전용 데이터만 전달한다.
+- 문서용 정적 preview와 인터랙티브 preview를 분리한다.
+- validation 실패 row는 preview에서 제외하고, 입력 영역에 오류를 표시한다.
+- debug mode는 `?debug=gantt` 또는 `localStorage.officeTool.gantt.debug=true`로 켠다.
+- 색상은 `Enterprise Light` palette token과 deterministic task color resolver를 통해 배정한다.
 
-## MVP 제외 범위
+## 지원 타입
 
-- 백엔드 저장, 로그인, 협업, 클라우드 저장
-- 외부 AI/LLM/API 기능
-- resource management
-- critical path
-- 고급 baseline 계산/차이 분석
-- MS Project import/export
-- 고급 drag/drop 편집기
+| 타입        | 목적                                   | 렌더러                                     | 주요 입력                                                                                            |
+| ----------- | -------------------------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| 기본 일정표 | 일반 작업 기간과 진행률 조정           | Frappe Gantt                               | name, owner, color, start, end, progress                                                             |
+| 마일스톤형  | 승인, 릴리즈, 마감 같은 단일 시점 관리 | jsGanttImproved + Mermaid Gantt            | id, name, date, section, status, dependsOn, owner, notes, critical                                   |
+| WBS/단계형  | 작업 분해 구조와 일정/계층 관리        | jsGanttImproved + Mermaid TreeView/Mindmap | id, code, name, parentId, nodeType, start, end, date, progress, owner, stage, dependsOn, notes, open |
 
-## 사용자 입력값
+Roadmap형과 진행률 추적형은 타입 간 차이가 충분하지 않아 제거했다. baseline 비교형은 별도 입력/렌더러 설계가 필요하면 후속 PLAN으로 다시 정의한다.
 
-| 필드        | 타입        | 필수          | 설명                                                 |
-| ----------- | ----------- | ------------- | ---------------------------------------------------- |
-| 간트 타입   | enum        | 예            | 출력 목적에 맞는 프리셋                              |
-| 날짜 단위   | enum        | 예            | 1일, 주, 월, 분기 중 선택                            |
-| 표시 시작   | 단위별 날짜 | 예            | preview에 표시할 최소 날짜                           |
-| 표시 종료   | 단위별 날짜 | 예            | preview에 표시할 최대 날짜                           |
-| 작업명      | string      | 예            | 문서에 보이는 작업 이름                              |
-| 시작일      | 단위별 날짜 | 예            | 작업 시작 날짜 또는 기간                             |
-| 종료일      | 단위별 날짜 | 타입별        | 작업 종료 날짜 또는 기간                             |
-| 진행률      | number      | 타입별        | 0부터 100까지의 완료율                               |
-| 단계        | string      | WBS/로드맵    | 묶음 또는 영역 이름                                  |
-| 담당자      | string      | 타입별        | 작업 책임자 또는 항목 owner                          |
-| 상태        | enum        | 타입별        | 계획, 정상, 위험, 차단, 완료 중 선택                 |
-| 계획 시작   | 단위별 날짜 | 진행률 추적형 | baseline 또는 원래 계획의 시작                       |
-| 계획 종료   | 단위별 날짜 | 진행률 추적형 | baseline 또는 원래 계획의 종료                       |
-| 선행 작업   | string[]    | WBS           | 쉼표로 구분한 선행 작업 ID                           |
-| 색상        | HEX color   | 기본 일정표   | task 막대 색상. 팔레트, 컬러 피커, HEX 입력으로 선택 |
-| 배경 템플릿 | enum        | 기본 일정표   | preview와 PNG 배경 스타일                            |
+## 마일스톤형
 
-## 내부 상태
+### 입력 필드
 
-| 필드                 | 설명                                                |
-| -------------------- | --------------------------------------------------- |
-| `tasks`              | 현재 편집 중인 작업 목록                            |
-| `chartType`          | 선택된 간트 타입                                    |
-| `viewMode`           | `Day`, `Week`, `Month`, `Quarter` 중 현재 날짜 단위 |
-| `timelineStart`      | preview 표시 시작일                                 |
-| `timelineEnd`        | preview 표시 종료일                                 |
-| `backgroundTemplate` | 기본 일정표 preview 배경 템플릿                     |
-| `debugEnabled`       | 디버그 로그 출력 여부                               |
-| `selectedTaskId`     | 사용자가 최근 선택하거나 편집한 작업                |
+| 필드        | 필수   | 설명                             |
+| ----------- | ------ | -------------------------------- |
+| id          | 예     | 마일스톤 고유 id                 |
+| name        | 예     | 표시 이름                        |
+| date        | 예     | `YYYY-MM-DD` 하루 단위 단일 날짜 |
+| section     | 아니오 | Mermaid Gantt section            |
+| status      | 아니오 | planned, on-track, done          |
+| dependsOn[] | 아니오 | 선행 마일스톤 id 목록            |
+| owner       | 아니오 | 담당자                           |
+| notes       | 아니오 | tooltip/문서용 메모              |
+| critical    | 아니오 | 중요 마감 표시                   |
 
-## 타입별 입력 모델
+### adapter 규칙
 
-| 타입          | 주 사용 맥락                                                  | 입력 방식                                                     |
-| ------------- | ------------------------------------------------------------- | ------------------------------------------------------------- |
-| 기본 일정표   | 작업 목록을 일정표로 입력하고 기간과 진행률을 조정한다.       | Task, Owner, 색상 선택 창, Start, End, Progress, 배경 템플릿  |
-| 로드맵형      | 월/분기 단위로 큰 흐름, 영역, 책임자, 상태를 공유한다.        | 영역, Item, Owner, 상태, Start, End                           |
-| 마일스톤형    | 승인, 릴리스, 마감처럼 하루짜리 주요 시점을 표시한다.         | Milestone, Owner, 상태, Date                                  |
-| 진행률 추적형 | 실제 일정과 원래 계획 또는 baseline을 비교해 상태를 점검한다. | Task, Owner, 상태, Start, End, Progress, 계획 시작, 계획 종료 |
-| WBS/단계형    | 작업 분해 구조와 선후 관계를 설명한다.                        | 단계, Work package, Owner, Start, End, Progress, 선행 작업    |
+- jsGanttImproved
+  - `pMile=1`
+  - `pStart=date`
+  - `pEnd=date`
+  - domain string id는 adapter에서 numeric row id로 매핑하고 `pDepend`에는 numeric id만 전달
+  - `status`는 row 구조가 아니라 caption badge/style에만 사용
+- Mermaid Gantt
+  - `milestone` 태그 사용
+  - `section`별 그룹 출력
+  - `dependsOn`은 `after`로 출력
+  - `critical=true`는 `crit` 및 `vert` deadline marker로 출력
+  - milestone-only preview는 `dateFormat YYYY-MM-DD`, `%m/%d` axis, 1주 tick 기준으로 compact하게 출력
 
-## 상호작용
+### validation
 
-- 하단 편집 패널에서 값을 수정하면 상단 preview가 갱신된다.
-- 상단 간트 막대를 이동하거나 resize하면 하단 날짜 입력값이 갱신된다.
-- 차트 클릭 선택만으로는 Frappe Gantt 인스턴스를 다시 생성하지 않는다.
-- 차트 드래그 결과가 유효하지 않은 날짜이거나 종료일이 시작일보다 빠르면 이전 task 값을 유지하고 debug mode에 rollback 이벤트를 남긴다.
-- 날짜 단위를 바꾸면 task와 표시 범위 입력 방식이 1일/주/월/분기 단위로 바뀐다.
-- 주 단위 preview는 상단 월 헤더 아래에 1주, 2주, 3주처럼 월 내부 주차를 표시한다.
-- 표시 시작/종료 범위는 task 날짜와 별개로 정할 수 있으며 preview는 내부 스크롤로 확인한다.
-- 기본 일정표 task 색상은 색상 선택 창에서 프리셋 팔레트, 브라우저 컬러 피커, HEX 입력으로 지정할 수 있다.
-- 기본 일정표 task 색상과 배경 템플릿은 preview와 PNG export 대상에 반영된다.
-- task 입력 영역은 내부 스크롤 대신 행 개수만큼 아래로 확장된다.
-- 상단 간트 진행률 핸들을 움직이면 하단 진행률 입력값이 갱신된다.
-- validation 오류가 있는 행은 preview 반영 전에 사용자에게 이유를 보여준다.
-- PNG 다운로드는 현재 preview 영역을 문서용 이미지로 저장한다.
+- `date`는 필수이며 `YYYY-MM-DD` 형식만 허용
+- `id` unique
+- `dependsOn`은 존재하는 id만 허용
+- `dependsOn`에 자기 자신 id 입력 금지
+- 순환 의존성 금지
+- `status`는 `planned`, `on-track`, `done`만 허용하며 별도 row/section 생성에는 사용하지 않음
 
-## 차트 타입 로드맵
+### 기본 샘플
 
-| 타입            | 단계   | 설명                                     |
-| --------------- | ------ | ---------------------------------------- |
-| 기본 일정표     | 구현됨 | 작업 기간과 진행률 중심                  |
-| 로드맵형        | 구현됨 | 월 단위 주요 흐름과 영역 중심            |
-| 마일스톤형      | 구현됨 | 승인, 릴리스, 마감 같은 주요 시점 중심   |
-| 진행률 추적형   | 구현됨 | 현재 진행률과 예상 진행률을 함께 확인    |
-| WBS/단계형      | 구현됨 | phase와 task를 묶어 프로젝트 구조를 표현 |
-| 담당자별 간트   | 3차    | 담당자 또는 팀 기준 grouping             |
-| 계획 대비 실제  | 후순위 | baseline과 actual 비교                   |
-| critical path형 | 후순위 | 선후행 관계와 위험 경로 중심             |
+- milestone-only 샘플은 2026-04-20부터 2026-05-27까지 약 5주 범위에 8개 milestone을 배치한다.
+- section은 기획/설계/개발/검수/릴리즈로 나누고, `done`, `on-track`, `planned`는 badge와 marker style에만 사용한다.
+- `ms-schema`는 `ms-scope`, `ms-research` 두 선행 milestone을 참조해 일직선만 있는 화면을 피한다.
 
-## 조사 요약
+## WBS/단계형
 
-- Microsoft Project는 기본 Gantt Chart 외에도 Detail Gantt, Milestone Rollup, Multiple Baselines Gantt, Tracking Gantt 같은 목적별 Gantt view를 제공한다.
-- Google Gantt는 Task ID, Task Name, Resource, Start, End, Duration, Percent Complete, Dependencies를 핵심 데이터로 사용하고 critical path 표시도 지원한다.
-- Frappe Gantt는 Day/Week/Month/Year view mode, 진행률 편집, 날짜 편집, 예상 진행률 표시 옵션을 제공한다.
-- 이 제품은 문서용 이미지 생성이 목적이므로 resource/critical path/baseline 계산 엔진은 후순위로 두고, 현재 단계에서는 타입 선택 프리셋으로 사용성을 높인다.
+### 입력 필드
 
-### 2026-04-18 재조사 반영
+| 필드        | 필수           | 설명                   |
+| ----------- | -------------- | ---------------------- |
+| id          | 예             | row 고유 id            |
+| code        | 예             | WBS code, 중복 금지    |
+| name        | 예             | row 이름               |
+| parentId    | 아니오         | 상위 row id            |
+| nodeType    | 예             | group, task, milestone |
+| start       | task 필수      | leaf task 시작일       |
+| end         | task 필수      | leaf task 종료일       |
+| date        | milestone 필수 | milestone 단일 날짜    |
+| progress    | task 필수      | 0-100 진행률           |
+| owner       | 아니오         | 담당자                 |
+| stage       | 아니오         | 단계/상태 그룹         |
+| dependsOn[] | 아니오         | 선행 row id 목록       |
+| notes       | 아니오         | tooltip/문서용 메모    |
+| open        | group          | 초기 펼침 상태         |
 
-- Microsoft Project 기준으로 일반 Gantt는 작업 입력/스케줄링, Milestone Rollup은 주요 시점 요약, Tracking Gantt와 Multiple Baselines Gantt는 baseline 대비 실제 일정 비교에 쓰인다. 그래서 진행률 추적형에는 baseline 입력을 분리했다.
-- Google Gantt의 Resource와 Dependencies 컬럼을 반영해 로드맵/기본 일정에는 Owner, WBS에는 선행 작업 입력을 둔다.
-- Frappe Gantt는 날짜/진행률 드래그 편집을 제공하지만, preview용 baseline 보조 막대는 실제 task 변경 대상이 아니므로 읽기 전용 preview 행으로 취급한다.
-- 마일스톤은 TeamGantt 사용 사례처럼 주요 목표/마감 시점을 diamond marker로 두고, 기간/진행률 대신 날짜/owner/status 중심으로 입력한다.
+### adapter 규칙
 
-## 디버그 모드
+- jsGanttImproved schedule renderer
+  - group row: `pGroup=1`, 날짜는 비워둘 수 있음
+  - hierarchy: `pParent=parentId`
+  - initial expand: `pOpen=open`
+  - milestone row: `pMile=1`, `pStart=pEnd=date`
+  - additional columns: `setAdditionalHeaders`로 code, stage, owner 출력
+- Mermaid TreeView
+  - parent-child tree를 indentation 기반 `treeView-beta` DSL로 출력
+- Mermaid Mindmap
+  - 발표/요약용 선택 preview로 WBS 계층을 `mindmap` DSL로 출력
 
-- URL query `?debug=gantt` 또는 브라우저 localStorage의 `officeTool.gantt.debug=true`로 켠다.
-- 일반 사용자 흐름에서는 로그를 출력하지 않는다.
-- 로그는 `window.__OFFICE_TOOL_GANTT_DEBUG__`에도 누적되어 Codex가 브라우저 실행 뒤 값 흐름을 확인할 수 있다.
-- 주요 이벤트는 초기화, task 변경, validation, Frappe Gantt 이벤트, PNG export 시도/완료/실패다.
+### validation
+
+- `id` unique
+- `parentId` 존재 검증
+- `code` 중복 금지
+- leaf task는 `start/end` 필수
+- `end >= start`
+- milestone은 `date` 필수
+- dependsOn은 존재하는 id만 허용하고 순환 의존성은 금지
+
+## Export
+
+- 이미지 만들기 버튼은 현재 preview DOM 전체를 PNG data URL로 생성하고 화면 아래에 결과 preview를 표시한다.
+- DOM 이미지 생성이 지연되면 같은 DSL/timeline/palette 규칙으로 그린 문서용 canvas PNG를 fallback으로 생성한다.
+- 이미지 다운로드 버튼은 생성된 PNG가 있으면 그대로 다운로드하고, 없으면 먼저 생성한 뒤 다운로드한다.
+- 기본 일정표, 마일스톤형, WBS/단계형 모두 PNG 이미지 출력 대상이다.
+- Mermaid SVG 단독 export는 후속 확장 후보로 둔다.
+
+## Theme
+
+- 기본 색상 체계는 `docs/product/GANTT_THEME_SPEC.md`의 Enterprise Light palette를 따른다.
+- 일반 task, semantic status, milestone, group, dependency, grid 색상을 분리한다.
+- 선택/hover 상태는 bar 색상을 변경하지 않고 outline/stroke/shadow로만 강조한다.
 
 ## 검증 기준
 
-- lint, typecheck, test, build가 통과한다.
-- `/gantt`에서 task 추가/수정/삭제가 preview에 반영된다.
-- 차트 drag로 바뀐 날짜와 진행률이 하단 입력값에 반영된다.
-- 잘못된 입력은 저장/preview 반영 전에 오류로 표시된다.
-- debug mode가 꺼진 일반 실행에서는 console log가 발생하지 않는다.
+- `npm run typecheck`
+- `npm run lint`
+- `npm run test`
+- `npm run build`
+- `/gantt`에서 기본 일정표/마일스톤형/WBS 전환, 타입별 입력 필드, adapter preview, 이미지 만들기/다운로드 버튼 상태를 수동 확인한다.

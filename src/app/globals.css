@@ -229,7 +229,7 @@ button:disabled {
 
 .chart-type-selector {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   padding: 12px;
   border-bottom: 1px solid var(--color-border);
@@ -486,16 +486,12 @@ button:disabled {
   background: #f3faf7;
 }
 
-.task-editor-row.type-roadmap {
-  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
-}
-
 .task-editor-row.type-milestones {
-  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 
 .task-editor-row.type-wbs {
-  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 
 .task-editor-row label {
@@ -511,7 +507,8 @@ button:disabled {
 }
 
 .task-editor-row input,
-.task-editor-row select {
+.task-editor-row select,
+.task-editor-row textarea {
   width: 100%;
   min-height: 38px;
   border: 1px solid var(--color-border);
@@ -519,6 +516,27 @@ button:disabled {
   padding: 8px 10px;
   color: var(--color-text);
   background: white;
+}
+
+.task-editor-row textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.task-editor-row .wide-field {
+  grid-column: 1 / -1;
+}
+
+.checkbox-field {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+}
+
+.checkbox-field input {
+  width: 18px;
+  min-height: 18px;
 }
 
 .color-picker-field {
@@ -699,50 +717,88 @@ button:disabled {
 }
 
 .gantt-export-surface {
+  --gantt-background: #ffffff;
+  --gantt-surface: #f7f8fa;
+  --gantt-grid-line: #e6e8ec;
+  --gantt-row-divider: #eceef2;
+  --gantt-text-primary: #1f2937;
+  --gantt-text-secondary: #667085;
+  --gantt-group-bar: #667085;
+  --gantt-secondary-bar: #98a2b3;
+  --gantt-disabled: #cbd5e1;
+  --gantt-dependency-line: #98a2b3;
+  --gantt-success: #4e8b63;
+  --gantt-warning: #d9a441;
+  --gantt-danger: #d95c5c;
+  --gantt-milestone: #c59b3a;
+  --gantt-task-0: #5b6ee1;
+  --gantt-task-0-progress: #4e5fc2;
+  --gantt-task-0-tint: #ebeefb;
+  --gantt-task-0-border: #5466cf;
+  --gantt-task-1: #2f7e9e;
+  --gantt-task-1-progress: #286c88;
+  --gantt-task-1-tint: #e3eff3;
+  --gantt-task-1-border: #2b7492;
+  --gantt-task-2: #4e8b63;
+  --gantt-task-2-progress: #437854;
+  --gantt-task-2-tint: #eaf3ed;
+  --gantt-task-2-border: #4a805b;
+  --gantt-task-3: #a07a2e;
+  --gantt-task-3-progress: #8a6928;
+  --gantt-task-3-tint: #f5efe0;
+  --gantt-task-3-border: #93712a;
+  --gantt-task-4: #a65d7b;
+  --gantt-task-4-progress: #8f506a;
+  --gantt-task-4-tint: #f6e7ed;
+  --gantt-task-4-border: #995672;
+  --gantt-task-5: #7a68b8;
+  --gantt-task-5-progress: #69599e;
+  --gantt-task-5-tint: #f0edf8;
+  --gantt-task-5-border: #7160aa;
   margin: 24px 0 0;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--gantt-row-divider);
   border-radius: 8px;
   overflow: hidden;
   max-width: 100%;
-  background: white;
+  background: var(--gantt-background);
 }
 
 .gantt-background-clean {
-  background: #ffffff;
+  background: var(--gantt-background);
 }
 
 .gantt-background-lined .gantt-container {
-  --g-header-background: #ffffff;
-  --g-row-color: #f8fbfa;
-  --g-row-border-color: #c8d9d2;
-  --g-tick-color: #dbe8e3;
-  --g-tick-color-thick: #a9bdb5;
-  --g-weekend-highlight-color: #eef7f3;
+  --g-header-background: var(--gantt-background);
+  --g-row-color: var(--gantt-surface);
+  --g-row-border-color: var(--gantt-row-divider);
+  --g-tick-color: var(--gantt-grid-line);
+  --g-tick-color-thick: var(--gantt-secondary-bar);
+  --g-weekend-highlight-color: #f1f4f8;
 }
 
 .gantt-background-document .gantt-container {
-  --g-header-background: #f7f8fb;
-  --g-row-color: #ffffff;
-  --g-row-border-color: #d4d9df;
-  --g-tick-color: #e8ecf1;
-  --g-tick-color-thick: #bec7d0;
-  --g-weekend-highlight-color: #f2f5f8;
+  --g-header-background: var(--gantt-surface);
+  --g-row-color: var(--gantt-background);
+  --g-row-border-color: var(--gantt-row-divider);
+  --g-tick-color: var(--gantt-grid-line);
+  --g-tick-color-thick: var(--gantt-secondary-bar);
+  --g-weekend-highlight-color: #f4f6f9;
 }
 
 .gantt-background-contrast .gantt-container {
-  --g-header-background: #ffffff;
-  --g-row-color: #f5f8f7;
-  --g-row-border-color: #9aa7a1;
-  --g-tick-color: #c5cec9;
-  --g-tick-color-thick: #68756f;
-  --g-weekend-highlight-color: #e6eeeb;
+  --g-header-background: var(--gantt-background);
+  --g-row-color: #f3f5f8;
+  --g-row-border-color: var(--gantt-secondary-bar);
+  --g-tick-color: var(--gantt-row-divider);
+  --g-tick-color-thick: var(--gantt-text-secondary);
+  --g-weekend-highlight-color: #edf0f5;
 }
 
 .gantt-preview {
   min-width: 0;
   min-height: 470px;
   overflow: hidden;
-  background: white;
+  background: var(--gantt-background);
 }
 
 .gantt-preview-canvas {
@@ -762,25 +818,25 @@ button:disabled {
 }
 
 .gantt-container {
-  --g-arrow-color: #2f3733;
-  --g-bar-color: #14745f;
-  --g-bar-border: #0f5c4b;
-  --g-tick-color-thick: #d8dfda;
-  --g-tick-color: #eef0ed;
-  --g-actions-background: #eef5f1;
-  --g-border-color: #d8dfda;
-  --g-text-muted: #5e6862;
+  --g-arrow-color: var(--gantt-dependency-line);
+  --g-bar-color: var(--gantt-task-0);
+  --g-bar-border: var(--gantt-task-0-border);
+  --g-tick-color-thick: var(--gantt-row-divider);
+  --g-tick-color: var(--gantt-grid-line);
+  --g-actions-background: var(--gantt-surface);
+  --g-border-color: var(--gantt-row-divider);
+  --g-text-muted: var(--gantt-text-secondary);
   --g-text-light: #ffffff;
-  --g-text-dark: #202522;
-  --g-progress-color: #b7831d;
-  --g-handle-color: #202522;
-  --g-expected-progress: #4d746c;
-  --g-header-background: #ffffff;
-  --g-row-color: #fbfcfb;
-  --g-row-border-color: #d8dfda;
-  --g-today-highlight: #a46412;
-  --g-popup-actions: #eef5f1;
-  --g-weekend-highlight-color: #f1f4f2;
+  --g-text-dark: var(--gantt-text-primary);
+  --g-progress-color: var(--gantt-task-0-progress);
+  --g-handle-color: var(--gantt-text-primary);
+  --g-expected-progress: var(--gantt-secondary-bar);
+  --g-header-background: var(--gantt-background);
+  --g-row-color: var(--gantt-background);
+  --g-row-border-color: var(--gantt-row-divider);
+  --g-today-highlight: var(--gantt-milestone);
+  --g-popup-actions: var(--gantt-surface);
+  --g-weekend-highlight-color: var(--gantt-surface);
   position: relative;
   width: 100%;
   height: var(--gv-grid-height);
@@ -797,10 +853,10 @@ button:disabled {
   left: 0;
   z-index: 1000;
   width: max-content;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--gantt-row-divider);
   border-radius: 8px;
   padding: 10px;
-  background: white;
+  background: var(--gantt-background);
   box-shadow: var(--shadow-soft);
 }
 
@@ -877,7 +933,7 @@ button:disabled {
   top: calc(var(--gv-upper-header-height) + 5px);
   height: calc(var(--gv-lower-header-height) - 6px);
   border-radius: 8px;
-  background: rgba(20, 116, 95, 0.1);
+  background: var(--gantt-task-0-tint);
 }
 
 .gantt-container .current-highlight,
@@ -941,7 +997,7 @@ button:disabled {
 }
 
 .gantt-preview-canvas .bar {
-  fill: var(--color-accent);
+  fill: var(--gantt-task-remaining, var(--gantt-task-0-tint));
 }
 
 .gantt .bar-wrapper {
@@ -950,12 +1006,12 @@ button:disabled {
 
 .gantt .bar-wrapper .bar {
   outline: 1px solid var(--g-row-border-color);
-  stroke: var(--g-bar-border);
-  stroke-width: 0;
+  stroke: var(--gantt-task-border, var(--g-bar-border));
+  stroke-width: 0.8;
 }
 
 .gantt-preview-canvas .bar-progress {
-  fill: #b7831d;
+  fill: var(--gantt-task-progress, var(--g-progress-color));
 }
 
 .gantt .bar-expected-progress {
@@ -963,28 +1019,16 @@ button:disabled {
 }
 
 .gantt-type-project .project-bar-color .bar {
-  fill: #14745f;
+  fill: var(--gantt-task-remaining, var(--gantt-task-0-tint));
 }
 
 .gantt-type-project .project-bar-color .bar-progress {
-  fill: rgba(32, 37, 34, 0.28);
-}
-
-.gantt-type-roadmap [class*="roadmap-bar"] .bar {
-  fill: #4d746c;
-}
-
-.gantt-type-roadmap [class*="roadmap-bar"] .bar-progress {
-  display: none;
-}
-
-.gantt-type-roadmap [class*="roadmap-bar"]:hover .bar,
-.gantt-type-roadmap [class*="roadmap-bar"].active .bar {
-  fill: #365f59;
+  fill: var(--gantt-task-progress, var(--gantt-task-0-progress));
 }
 
 .gantt-type-milestones [class*="milestone-marker"] .bar {
-  fill: #b7831d;
+  fill: var(--gantt-milestone);
+  stroke: var(--gantt-milestone);
   transform: rotate(45deg);
   transform-box: fill-box;
   transform-origin: center;
@@ -997,55 +1041,23 @@ button:disabled {
 
 .gantt-type-milestones [class*="milestone-marker"]:hover .bar,
 .gantt-type-milestones [class*="milestone-marker"].active .bar {
-  fill: #8f6617;
+  filter: drop-shadow(0 0 0.25rem rgba(31, 41, 55, 0.24));
 }
 
-.gantt-type-progress [class*="progress-tracking-bar"] .bar-progress {
-  fill: #b7831d;
+.gantt-type-wbs .wbs-task-row .bar {
+  fill: var(--gantt-task-remaining, var(--gantt-task-0-tint));
 }
 
-.gantt-type-progress .baseline-bar .bar {
-  fill: rgba(77, 116, 108, 0.12);
-  stroke: #4d746c;
-  stroke-dasharray: 5 4;
-  stroke-width: 1.5;
+.gantt-type-wbs .wbs-group-row .bar {
+  fill: var(--gantt-group-bar);
 }
 
-.gantt-type-progress .baseline-bar .bar-progress,
-.gantt-type-progress .baseline-bar .handle {
-  display: none;
-}
-
-.gantt-type-progress .bar-expected-progress {
-  fill: rgba(77, 116, 108, 0.68);
-}
-
-.gantt-type-wbs .wbs-bar .bar {
-  fill: #14745f;
-}
-
-.gantt-type-wbs .wbs-bar:nth-of-type(2n) .bar {
-  fill: #4d746c;
-}
-
-.gantt-preview-canvas [class*="-status-planned"] .bar {
-  fill: #4d746c;
-}
-
-.gantt-preview-canvas [class*="-status-on-track"] .bar {
-  fill: #14745f;
-}
-
-.gantt-preview-canvas [class*="-status-at-risk"] .bar {
-  fill: #b7831d;
-}
-
-.gantt-preview-canvas [class*="-status-blocked"] .bar {
-  fill: #9b3f34;
-}
-
-.gantt-preview-canvas [class*="-status-done"] .bar {
-  fill: #52625b;
+.gantt-type-wbs .wbs-milestone-row .bar {
+  fill: var(--gantt-milestone);
+  stroke: var(--gantt-milestone);
+  transform: rotate(45deg);
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
 .gantt .bar-invalid {
@@ -1094,19 +1106,334 @@ button:disabled {
 
 .gantt-preview-canvas .bar-wrapper.active .bar,
 .gantt-preview-canvas .bar-wrapper:hover .bar {
-  fill: var(--color-accent-strong);
+  filter: drop-shadow(0 0 0.24rem rgba(31, 41, 55, 0.24));
+  stroke: var(--gantt-task-border, var(--gantt-task-color));
+  stroke-width: 1.5;
 }
 
 .gantt-preview-canvas .grid-header {
-  color: var(--color-text);
+  color: var(--gantt-text-primary);
 }
 
 .gantt-preview-canvas .today-highlight {
-  fill: rgba(183, 131, 29, 0.16);
+  fill: color-mix(in srgb, var(--gantt-milestone) 16%, transparent);
 }
 
 .gantt-preview-status {
   margin: 24px;
+}
+
+.typed-gantt-preview {
+  min-width: 0;
+  padding: 16px;
+  background: var(--gantt-background);
+}
+
+.adapter-preview-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.adapter-preview-section {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--gantt-row-divider);
+  border-radius: 8px;
+  background: var(--gantt-surface);
+}
+
+.adapter-preview-section h3 {
+  margin: 0;
+  border-bottom: 1px solid var(--gantt-row-divider);
+  padding: 12px 14px;
+  background: var(--gantt-surface);
+  font-size: 15px;
+}
+
+.jsgantt-adapter-preview {
+  min-height: 420px;
+  max-height: min(64vh, 620px);
+  overflow: auto;
+  padding: 12px;
+  background: var(--gantt-background);
+}
+
+.jsgantt-adapter-preview.jsgantt-milestones {
+  min-height: 360px;
+  max-height: min(58vh, 540px);
+  padding: 10px;
+}
+
+.jsgantt-adapter-preview table {
+  border-collapse: collapse;
+  font-family: Arial, "Noto Sans KR", system-ui, sans-serif;
+}
+
+.jsgantt-adapter-preview .gchartcontainer {
+  min-width: 980px;
+  color: var(--gantt-text-primary);
+  font-size: 12px;
+}
+
+.jsgantt-adapter-preview.jsgantt-milestones .gchartcontainer {
+  min-width: 860px;
+}
+
+.jsgantt-adapter-preview .gcharttable,
+.jsgantt-adapter-preview .gcharttableh,
+.jsgantt-adapter-preview .gtasktable,
+.jsgantt-adapter-preview .gtasktableh {
+  border-collapse: collapse;
+}
+
+.jsgantt-adapter-preview td,
+.jsgantt-adapter-preview th {
+  border: 1px solid var(--gantt-grid-line);
+  padding: 3px 5px;
+  white-space: nowrap;
+}
+
+.jsgantt-adapter-preview .gtaskheading,
+.jsgantt-adapter-preview .gmajorheading,
+.jsgantt-adapter-preview .gminorheading,
+.jsgantt-adapter-preview .gspanning {
+  background: var(--gantt-surface);
+  color: var(--gantt-text-secondary);
+  font-weight: 700;
+}
+
+.jsgantt-adapter-preview .gtaskname {
+  min-width: 180px;
+  font-weight: 700;
+}
+
+.jsgantt-adapter-preview.jsgantt-milestones .gtaskname {
+  min-width: 132px;
+  max-width: 172px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jsgantt-adapter-preview .gadditional {
+  min-width: 74px;
+}
+
+.jsgantt-adapter-preview.jsgantt-milestones .gadditional {
+  min-width: 54px;
+  max-width: 86px;
+}
+
+.jsgantt-adapter-preview.jsgantt-milestones .gadditional.gantt-status-column,
+.jsgantt-adapter-preview.jsgantt-milestones .gantt-status-column {
+  width: 64px;
+}
+
+.jsgantt-adapter-preview .gmilecaption.gantt-status-badge,
+.jsgantt-adapter-preview .gantt-status-column .gantt-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto !important;
+  min-width: 54px;
+  height: 20px;
+  margin-top: -4px;
+  border: 1px solid var(--gantt-row-divider);
+  border-radius: 8px;
+  padding: 0 8px;
+  color: var(--gantt-text-secondary);
+  background: var(--gantt-surface);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.jsgantt-adapter-preview .gmilecaption.gantt-status-done,
+.jsgantt-adapter-preview .gantt-status-column .gantt-status-done {
+  border-color: color-mix(in srgb, var(--gantt-success) 34%, white);
+  color: var(--gantt-success);
+  background: color-mix(in srgb, var(--gantt-success) 12%, white);
+}
+
+.jsgantt-adapter-preview .gmilecaption.gantt-status-on-track,
+.jsgantt-adapter-preview .gantt-status-column .gantt-status-on-track {
+  border-color: color-mix(in srgb, var(--gantt-task-1) 34%, white);
+  color: var(--gantt-task-1);
+  background: color-mix(in srgb, var(--gantt-task-1) 12%, white);
+}
+
+.jsgantt-adapter-preview .gmilecaption.gantt-status-planned,
+.jsgantt-adapter-preview .gantt-status-column .gantt-status-planned {
+  border-color: var(--gantt-grid-line);
+  color: var(--gantt-text-secondary);
+  background: var(--gantt-surface);
+}
+
+.jsgantt-adapter-preview .gtaskblue,
+.jsgantt-adapter-preview .gtaskred,
+.jsgantt-adapter-preview .ggroupblack,
+.jsgantt-adapter-preview .gantt-task-color-0,
+.jsgantt-adapter-preview .gantt-task-color-1,
+.jsgantt-adapter-preview .gantt-task-color-2,
+.jsgantt-adapter-preview .gantt-task-color-3,
+.jsgantt-adapter-preview .gantt-task-color-4,
+.jsgantt-adapter-preview .gantt-task-color-5,
+.jsgantt-adapter-preview .gantt-task-manual,
+.jsgantt-adapter-preview .gantt-group-bar,
+.jsgantt-adapter-preview .gantt-milestone-bar,
+.jsgantt-adapter-preview .gantt-semantic-success,
+.jsgantt-adapter-preview .gantt-semantic-warning,
+.jsgantt-adapter-preview .gantt-semantic-danger {
+  min-height: 8px;
+  border-radius: 4px;
+}
+
+.jsgantt-adapter-preview .gtaskblue,
+.jsgantt-adapter-preview .gantt-task-color-0,
+.jsgantt-adapter-preview .gantt-task-manual {
+  background: var(--gantt-task-0-tint);
+}
+
+.jsgantt-adapter-preview .gantt-task-color-1 {
+  background: var(--gantt-task-1-tint);
+}
+
+.jsgantt-adapter-preview .gantt-task-color-2 {
+  background: var(--gantt-task-2-tint);
+}
+
+.jsgantt-adapter-preview .gantt-task-color-3 {
+  background: var(--gantt-task-3-tint);
+}
+
+.jsgantt-adapter-preview .gantt-task-color-4 {
+  background: var(--gantt-task-4-tint);
+}
+
+.jsgantt-adapter-preview .gantt-task-color-5 {
+  background: var(--gantt-task-5-tint);
+}
+
+.jsgantt-adapter-preview .gtaskred,
+.jsgantt-adapter-preview .gantt-milestone-bar {
+  background: var(--gantt-milestone);
+}
+
+.jsgantt-adapter-preview .ggroupblack,
+.jsgantt-adapter-preview .gantt-group-bar {
+  background: var(--gantt-group-bar);
+}
+
+.jsgantt-adapter-preview .gantt-semantic-success {
+  background: color-mix(in srgb, var(--gantt-success) 14%, white);
+}
+
+.jsgantt-adapter-preview .gantt-semantic-warning {
+  background: color-mix(in srgb, var(--gantt-warning) 14%, white);
+}
+
+.jsgantt-adapter-preview .gantt-semantic-danger {
+  background: color-mix(in srgb, var(--gantt-danger) 14%, white);
+}
+
+.jsgantt-adapter-preview .gtaskbluecomplete,
+.jsgantt-adapter-preview .gtaskredcomplete,
+.jsgantt-adapter-preview .ggroupblackcomplete,
+.jsgantt-adapter-preview .gantt-task-color-0complete,
+.jsgantt-adapter-preview .gantt-task-color-1complete,
+.jsgantt-adapter-preview .gantt-task-color-2complete,
+.jsgantt-adapter-preview .gantt-task-color-3complete,
+.jsgantt-adapter-preview .gantt-task-color-4complete,
+.jsgantt-adapter-preview .gantt-task-color-5complete,
+.jsgantt-adapter-preview .gantt-task-manualcomplete,
+.jsgantt-adapter-preview .gantt-group-barcomplete,
+.jsgantt-adapter-preview .gantt-milestone-barcomplete,
+.jsgantt-adapter-preview .gantt-semantic-successcomplete,
+.jsgantt-adapter-preview .gantt-semantic-warningcomplete,
+.jsgantt-adapter-preview .gantt-semantic-dangercomplete {
+  background: var(--gantt-secondary-bar);
+}
+
+.jsgantt-adapter-preview .gtaskbluecomplete,
+.jsgantt-adapter-preview .gantt-task-color-0complete,
+.jsgantt-adapter-preview .gantt-task-manualcomplete {
+  background: var(--gantt-task-0-progress);
+}
+
+.jsgantt-adapter-preview .gantt-task-color-1complete {
+  background: var(--gantt-task-1-progress);
+}
+
+.jsgantt-adapter-preview .gantt-task-color-2complete {
+  background: var(--gantt-task-2-progress);
+}
+
+.jsgantt-adapter-preview .gantt-task-color-3complete {
+  background: var(--gantt-task-3-progress);
+}
+
+.jsgantt-adapter-preview .gantt-task-color-4complete {
+  background: var(--gantt-task-4-progress);
+}
+
+.jsgantt-adapter-preview .gantt-task-color-5complete {
+  background: var(--gantt-task-5-progress);
+}
+
+.jsgantt-adapter-preview .gtaskredcomplete,
+.jsgantt-adapter-preview .gantt-milestone-barcomplete {
+  background: var(--gantt-milestone);
+}
+
+.jsgantt-adapter-preview .gantt-semantic-successcomplete {
+  background: var(--gantt-success);
+}
+
+.jsgantt-adapter-preview .gantt-semantic-warningcomplete {
+  background: var(--gantt-warning);
+}
+
+.jsgantt-adapter-preview .gantt-semantic-dangercomplete {
+  background: var(--gantt-danger);
+}
+
+.mermaid-preview {
+  min-height: 240px;
+  overflow: auto;
+  padding: 16px;
+  background: var(--gantt-background);
+}
+
+.mermaid-kind-gantt .mermaid-preview {
+  min-height: 300px;
+  max-height: min(56vh, 520px);
+}
+
+.mermaid-preview svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.mermaid-source {
+  border-top: 1px solid var(--gantt-row-divider);
+  padding: 10px 14px 14px;
+  background: var(--gantt-surface);
+}
+
+.mermaid-source summary {
+  cursor: pointer;
+  color: var(--gantt-task-0);
+  font-weight: 700;
+}
+
+.mermaid-source pre {
+  overflow: auto;
+  margin: 10px 0 0;
+  border: 1px solid var(--gantt-row-divider);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--gantt-background);
+  color: var(--gantt-text-primary);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .preview-meta {
@@ -1120,8 +1447,8 @@ button:disabled {
 .export-status {
   border-radius: 8px;
   padding: 6px 9px;
-  color: var(--color-muted);
-  background: #f1f4f2;
+  color: var(--gantt-text-secondary);
+  background: var(--gantt-surface);
   font-size: 13px;
   font-weight: 700;
 }
@@ -1130,6 +1457,53 @@ button:disabled {
   display: inline-block;
   margin: 12px 0 0;
   line-height: 1.5;
+}
+
+.image-output-panel {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.7fr) minmax(260px, 1.3fr) auto;
+  align-items: center;
+  gap: 16px;
+  margin-top: 14px;
+  border: 1px solid var(--gantt-row-divider);
+  border-radius: 8px;
+  padding: 14px;
+  background: var(--gantt-background);
+}
+
+.image-output-copy h3 {
+  margin: 0 0 6px;
+  color: var(--gantt-text-primary);
+  font-size: 15px;
+}
+
+.image-output-copy p {
+  margin: 0;
+  color: var(--gantt-text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.image-output-copy small {
+  display: block;
+  margin-top: 8px;
+  color: var(--gantt-text-secondary);
+  font-size: 12px;
+}
+
+.image-output-frame {
+  max-height: 210px;
+  overflow: auto;
+  border: 1px solid var(--gantt-grid-line);
+  border-radius: 8px;
+  background: var(--gantt-surface);
+}
+
+.image-output-frame img {
+  display: block;
+  width: 100%;
+  min-width: 480px;
+  height: auto;
 }
 
 .preview-placeholder {
@@ -1158,15 +1532,15 @@ button:disabled {
 .timeline-row span {
   display: block;
   border-radius: 8px;
-  background: var(--color-accent);
+  background: var(--gantt-task-0);
 }
 
 .timeline-row span:nth-child(2) {
-  background: #b7831d;
+  background: var(--gantt-task-1);
 }
 
 .timeline-row span:nth-child(3) {
-  background: #4d746c;
+  background: var(--gantt-task-2);
 }
 
 @media (max-width: 980px) {
@@ -1200,7 +1574,6 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 
-  .task-editor-row.type-roadmap,
   .task-editor-row.type-milestones,
   .task-editor-row.type-wbs {
     grid-template-columns: 1fr;
@@ -1220,5 +1593,13 @@ button:disabled {
   .color-picker-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .image-output-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .image-output-frame img {
+    min-width: 640px;
   }
 }

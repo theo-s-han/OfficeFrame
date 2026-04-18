@@ -1,7 +1,5 @@
 import {
   createTaskId,
-  defaultGanttTaskColor,
-  getGanttTaskStatusLabel,
   getTodayDateString,
   type GanttChartType,
   type GanttTask,
@@ -71,52 +69,23 @@ export const ganttChartTypes: GanttChartTypeConfig[] = [
     },
   },
   {
-    id: "roadmap",
-    name: "로드맵형",
-    shortName: "로드맵",
-    description: "분기/월 단위의 큰 흐름과 영역을 보여줍니다.",
-    editorTitle: "로드맵 항목",
-    editorHelp: "영역과 항목 기간을 입력해 큰 흐름을 만듭니다.",
-    previewTitle: "로드맵형 preview",
-    previewHelp: "상세 task보다 주요 흐름을 강조합니다.",
-    defaultViewMode: "Month",
-    taskNameLabel: "Item",
-    startLabel: "Start",
-    endLabel: "End",
-    progressLabel: "Progress",
-    phaseLabel: "영역",
-    ownerLabel: "Owner",
-    statusLabel: "상태",
-    baselineStartLabel: "Baseline start",
-    baselineEndLabel: "Baseline end",
-    dependenciesLabel: "Depends on",
-    fields: {
-      phase: true,
-      owner: true,
-      status: true,
-      baseline: false,
-      dependencies: false,
-      end: true,
-      progress: false,
-    },
-  },
-  {
     id: "milestones",
     name: "마일스톤형",
     shortName: "마일스톤",
-    description: "승인, 릴리스, 마감 같은 주요 시점만 간결하게 표시합니다.",
+    description: "승인, 릴리즈, 마감 같은 단일 시점을 의존성과 함께 봅니다.",
     editorTitle: "마일스톤 입력",
-    editorHelp: "마일스톤 이름과 날짜만 입력합니다.",
-    previewTitle: "마일스톤형 preview",
-    previewHelp: "주요 날짜를 짧은 표식으로 정리합니다.",
-    defaultViewMode: "Month",
+    editorHelp:
+      "section, status, dependsOn, critical로 주요 시점을 정의합니다.",
+    previewTitle: "마일스톤 preview",
+    previewHelp: "인터랙티브 일정과 문서용 Mermaid Gantt를 분리해 보여줍니다.",
+    defaultViewMode: "Week",
     taskNameLabel: "Milestone",
     startLabel: "Date",
     endLabel: "End",
     progressLabel: "Progress",
-    phaseLabel: "Phase",
+    phaseLabel: "Section",
     ownerLabel: "Owner",
-    statusLabel: "상태",
+    statusLabel: "Status",
     baselineStartLabel: "Baseline start",
     baselineEndLabel: "Baseline end",
     dependenciesLabel: "Depends on",
@@ -125,61 +94,33 @@ export const ganttChartTypes: GanttChartTypeConfig[] = [
       owner: true,
       status: true,
       baseline: false,
-      dependencies: false,
+      dependencies: true,
       end: false,
       progress: false,
-    },
-  },
-  {
-    id: "progress",
-    name: "진행률 추적형",
-    shortName: "진행률",
-    description: "현재 진행률과 예상 진행률을 함께 확인합니다.",
-    editorTitle: "진행률 입력",
-    editorHelp: "진행률을 중심으로 현재 상태를 점검합니다.",
-    previewTitle: "진행률 추적형 preview",
-    previewHelp: "현재 진행률과 예상 진행률을 함께 보여줍니다.",
-    defaultViewMode: "Week",
-    taskNameLabel: "Task",
-    startLabel: "Start",
-    endLabel: "End",
-    progressLabel: "Progress",
-    phaseLabel: "Phase",
-    ownerLabel: "Owner",
-    statusLabel: "상태",
-    baselineStartLabel: "계획 시작",
-    baselineEndLabel: "계획 종료",
-    dependenciesLabel: "Depends on",
-    fields: {
-      phase: false,
-      owner: true,
-      status: true,
-      baseline: true,
-      dependencies: false,
-      end: true,
-      progress: true,
     },
   },
   {
     id: "wbs",
     name: "WBS/단계형",
     shortName: "WBS",
-    description: "단계와 작업을 함께 보여줘 프로젝트 구조를 설명합니다.",
-    editorTitle: "WBS 작업 입력",
-    editorHelp: "단계와 작업을 함께 입력해 구조를 드러냅니다.",
-    previewTitle: "WBS/단계형 preview",
-    previewHelp: "작업 이름 앞에 단계가 붙어 구조가 보입니다.",
+    description:
+      "작업 분해 구조, 상위 그룹, leaf task, milestone을 함께 봅니다.",
+    editorTitle: "WBS 입력",
+    editorHelp:
+      "code, parentId, nodeType으로 구조를 만들고 일정과 담당자를 붙입니다.",
+    previewTitle: "WBS preview",
+    previewHelp: "일정표와 TreeView/Mindmap 문서 미리보기를 함께 확인합니다.",
     defaultViewMode: "Week",
     taskNameLabel: "Work package",
     startLabel: "Start",
     endLabel: "End",
     progressLabel: "Progress",
-    phaseLabel: "단계",
+    phaseLabel: "Stage",
     ownerLabel: "Owner",
     statusLabel: "Status",
     baselineStartLabel: "Baseline start",
     baselineEndLabel: "Baseline end",
-    dependenciesLabel: "선행 작업",
+    dependenciesLabel: "Depends on",
     fields: {
       phase: true,
       owner: true,
@@ -201,7 +142,6 @@ const sampleTasksByType: Record<GanttChartType, GanttTask[]> = {
       end: "2026-04-24",
       progress: 80,
       owner: "PM",
-      color: "#14745F",
     },
     {
       id: "task-2",
@@ -210,7 +150,6 @@ const sampleTasksByType: Record<GanttChartType, GanttTask[]> = {
       end: "2026-04-29",
       progress: 45,
       owner: "UX",
-      color: "#2F8F89",
     },
     {
       id: "task-3",
@@ -219,7 +158,6 @@ const sampleTasksByType: Record<GanttChartType, GanttTask[]> = {
       end: "2026-05-08",
       progress: 10,
       owner: "Dev",
-      color: "#B7831D",
     },
     {
       id: "task-4",
@@ -228,146 +166,220 @@ const sampleTasksByType: Record<GanttChartType, GanttTask[]> = {
       end: "2026-05-12",
       progress: 0,
       owner: "Ops",
-      color: "#C75D4F",
-    },
-  ],
-  roadmap: [
-    {
-      id: "roadmap-1",
-      name: "핵심 입력 흐름",
-      phase: "Editor",
-      start: "2026-04-01",
-      end: "2026-05-15",
-      progress: 0,
-      owner: "Product",
-      status: "on-track",
-    },
-    {
-      id: "roadmap-2",
-      name: "문서용 출력",
-      phase: "Export",
-      start: "2026-05-01",
-      end: "2026-06-20",
-      progress: 0,
-      owner: "Dev",
-      status: "at-risk",
-    },
-    {
-      id: "roadmap-3",
-      name: "차트 타입 확장",
-      phase: "Templates",
-      start: "2026-06-01",
-      end: "2026-07-31",
-      progress: 0,
-      owner: "PM",
-      status: "planned",
     },
   ],
   milestones: [
     {
-      id: "milestone-1",
-      name: "범위 승인",
+      id: "ms-kickoff",
+      name: "프로젝트 킥오프",
+      date: "2026-04-20",
       start: "2026-04-20",
       end: "2026-04-20",
       progress: 100,
-      owner: "PM",
+      section: "기획",
       status: "done",
-      customClass: "milestone-marker",
+      dependsOn: [],
+      owner: "PM",
+      notes: "프로젝트 시작",
     },
     {
-      id: "milestone-2",
-      name: "MVP 리뷰",
-      start: "2026-05-08",
-      end: "2026-05-08",
+      id: "ms-scope",
+      name: "범위 승인",
+      date: "2026-04-24",
+      start: "2026-04-24",
+      end: "2026-04-24",
       progress: 100,
-      owner: "Dev lead",
-      status: "on-track",
-      customClass: "milestone-marker",
+      section: "기획",
+      status: "done",
+      dependsOn: ["ms-kickoff"],
+      owner: "PM",
+      notes: "MVP 범위 확정",
     },
     {
-      id: "milestone-3",
-      name: "문서 배포",
+      id: "ms-research",
+      name: "사용자 조사 정리",
+      date: "2026-04-28",
+      start: "2026-04-28",
+      end: "2026-04-28",
+      progress: 100,
+      section: "설계",
+      status: "done",
+      dependsOn: ["ms-kickoff"],
+      owner: "UX",
+      notes: "조사 결과 정리",
+    },
+    {
+      id: "ms-schema",
+      name: "입력 스키마 확정",
+      date: "2026-05-02",
+      start: "2026-05-02",
+      end: "2026-05-02",
+      progress: 100,
+      section: "설계",
+      status: "on-track",
+      dependsOn: ["ms-scope", "ms-research"],
+      owner: "UX",
+      notes: "데이터 구조 확정",
+    },
+    {
+      id: "ms-ui",
+      name: "UI 시안 확정",
+      date: "2026-05-07",
+      start: "2026-05-07",
+      end: "2026-05-07",
+      progress: 100,
+      section: "설계",
+      status: "planned",
+      dependsOn: ["ms-schema"],
+      owner: "Designer",
+      notes: "화면 시안 승인",
+    },
+    {
+      id: "ms-dev-ready",
+      name: "개발 준비 완료",
+      date: "2026-05-13",
+      start: "2026-05-13",
+      end: "2026-05-13",
+      progress: 100,
+      section: "개발",
+      status: "planned",
+      dependsOn: ["ms-ui"],
+      owner: "Dev Lead",
+      notes: "구현 시작 가능",
+    },
+    {
+      id: "ms-qa",
+      name: "QA 시작",
+      date: "2026-05-20",
       start: "2026-05-20",
       end: "2026-05-20",
       progress: 100,
-      owner: "Ops",
+      section: "검수",
       status: "planned",
-      customClass: "milestone-marker",
-    },
-  ],
-  progress: [
-    {
-      id: "progress-1",
-      name: "기획 확정",
-      start: "2026-04-18",
-      end: "2026-04-25",
-      progress: 100,
-      owner: "PM",
-      status: "done",
-      baselineStart: "2026-04-18",
-      baselineEnd: "2026-04-24",
-    },
-    {
-      id: "progress-2",
-      name: "렌더링 연결",
-      start: "2026-04-24",
-      end: "2026-05-03",
-      progress: 65,
-      owner: "Dev",
-      status: "on-track",
-      baselineStart: "2026-04-22",
-      baselineEnd: "2026-05-01",
-    },
-    {
-      id: "progress-3",
-      name: "PNG 품질 확인",
-      start: "2026-05-01",
-      end: "2026-05-12",
-      progress: 25,
+      dependsOn: ["ms-dev-ready"],
       owner: "QA",
-      status: "at-risk",
-      baselineStart: "2026-05-01",
-      baselineEnd: "2026-05-09",
+      notes: "QA 시작",
+    },
+    {
+      id: "ms-release",
+      name: "MVP 리뷰",
+      date: "2026-05-27",
+      start: "2026-05-27",
+      end: "2026-05-27",
+      progress: 100,
+      section: "릴리즈",
+      status: "planned",
+      dependsOn: ["ms-qa"],
+      owner: "PM",
+      notes: "MVP 리뷰 및 피드백",
     },
   ],
   wbs: [
     {
-      id: "wbs-1",
-      phase: "1. 기획",
+      id: "wbs-plan",
+      code: "1",
+      name: "기획",
+      parentId: "",
+      nodeType: "group",
+      start: "",
+      end: "",
+      progress: 0,
+      owner: "PM",
+      stage: "Discovery",
+      dependsOn: [],
+      notes: "상위 작업 그룹",
+      open: true,
+    },
+    {
+      id: "wbs-scenario",
+      code: "1.1",
       name: "사용자 시나리오 정리",
+      parentId: "wbs-plan",
+      nodeType: "task",
       start: "2026-04-20",
       end: "2026-04-24",
       progress: 90,
       owner: "PM",
+      stage: "Discovery",
+      dependsOn: [],
+      notes: "핵심 사용 흐름",
+      open: true,
     },
     {
-      id: "wbs-2",
-      phase: "2. 설계",
+      id: "wbs-design",
+      code: "2",
+      name: "설계",
+      parentId: "",
+      nodeType: "group",
+      start: "",
+      end: "",
+      progress: 0,
+      owner: "UX",
+      stage: "Design",
+      dependsOn: [],
+      notes: "화면과 입력 스키마",
+      open: true,
+    },
+    {
+      id: "wbs-schema",
+      code: "2.1",
       name: "입력 스키마 정의",
+      parentId: "wbs-design",
+      nodeType: "task",
       start: "2026-04-24",
       end: "2026-04-30",
       progress: 60,
       owner: "UX",
+      stage: "Design",
+      dependsOn: ["wbs-scenario"],
+      notes: "Milestone/WBS DSL",
+      open: true,
     },
     {
-      id: "wbs-3",
-      phase: "3. 구현",
-      name: "타입별 preview 구현",
+      id: "wbs-schema-done",
+      code: "2.2",
+      name: "스키마 승인",
+      parentId: "wbs-design",
+      nodeType: "milestone",
+      date: "2026-05-01",
       start: "2026-05-01",
+      end: "2026-05-01",
+      progress: 100,
+      owner: "PM",
+      stage: "Approval",
+      dependsOn: ["wbs-schema"],
+      notes: "개발 전 승인점",
+      open: true,
+    },
+    {
+      id: "wbs-build",
+      code: "3",
+      name: "구현",
+      parentId: "",
+      nodeType: "group",
+      start: "",
+      end: "",
+      progress: 0,
+      owner: "Dev",
+      stage: "Build",
+      dependsOn: [],
+      notes: "adapter와 preview",
+      open: true,
+    },
+    {
+      id: "wbs-adapter",
+      code: "3.1",
+      name: "renderer adapter 구현",
+      parentId: "wbs-build",
+      nodeType: "task",
+      start: "2026-05-04",
       end: "2026-05-10",
       progress: 35,
       owner: "Dev",
-      dependencies: ["wbs-2"],
-    },
-    {
-      id: "wbs-4",
-      phase: "4. 검증",
-      name: "문서용 PNG 확인",
-      start: "2026-05-11",
-      end: "2026-05-15",
-      progress: 0,
-      owner: "QA",
-      dependencies: ["wbs-3"],
+      stage: "Build",
+      dependsOn: ["wbs-schema-done"],
+      notes: "jsGantt/Mermaid 분리",
+      open: true,
     },
   ],
 };
@@ -385,6 +397,7 @@ export function getSampleTasksForChartType(
 ): GanttTask[] {
   return sampleTasksByType[chartType].map((task) => ({
     ...task,
+    dependsOn: task.dependsOn ? [...task.dependsOn] : undefined,
     dependencies: task.dependencies ? [...task.dependencies] : undefined,
   }));
 }
@@ -400,52 +413,36 @@ export function createEmptyTaskForChartType(
     return {
       id,
       name: "새 마일스톤",
+      date: baseDate,
       start: baseDate,
       end: baseDate,
       progress: 100,
-      owner: "",
+      section: "구간",
       status: "planned",
+      dependsOn: [],
+      owner: "",
+      notes: "",
+      critical: false,
       customClass: "milestone-marker",
-    };
-  }
-
-  if (chartType === "roadmap") {
-    return {
-      id,
-      name: "새 로드맵 항목",
-      phase: "영역",
-      start: baseDate,
-      end: baseDate,
-      progress: 0,
-      owner: "",
-      status: "planned",
-    };
-  }
-
-  if (chartType === "progress") {
-    return {
-      id,
-      name: "새 추적 작업",
-      start: baseDate,
-      end: baseDate,
-      progress: 0,
-      owner: "",
-      status: "planned",
-      baselineStart: baseDate,
-      baselineEnd: baseDate,
     };
   }
 
   if (chartType === "wbs") {
     return {
       id,
-      name: "새 작업 패키지",
-      phase: "단계",
+      code: String(tasks.length + 1),
+      name: "새 작업",
+      parentId: "",
+      nodeType: "task",
       start: baseDate,
       end: baseDate,
+      date: baseDate,
       progress: 0,
       owner: "",
-      dependencies: [],
+      stage: "",
+      dependsOn: [],
+      notes: "",
+      open: true,
     };
   }
 
@@ -456,7 +453,6 @@ export function createEmptyTaskForChartType(
     end: baseDate,
     progress: 0,
     owner: "",
-    color: defaultGanttTaskColor,
   };
 }
 
@@ -477,45 +473,40 @@ export function normalizeTaskForChartType(
   chartType: GanttChartType,
 ): GanttTask {
   if (chartType === "milestones") {
+    const date = task.date || task.start;
+
     return {
       ...task,
       name: `${task.name}${getOwnerSuffix(task)}`,
-      end: task.start,
+      start: date,
+      end: date,
+      date,
       progress: 100,
-      customClass: getCustomClass("milestone-marker", task),
-    };
-  }
-
-  if (chartType === "roadmap") {
-    const statusLabel = task.status
-      ? ` (${getGanttTaskStatusLabel(task.status)})`
-      : "";
-
-    return {
-      ...task,
-      name: task.phase
-        ? `${task.phase}: ${task.name}${statusLabel}${getOwnerSuffix(task)}`
-        : `${task.name}${statusLabel}${getOwnerSuffix(task)}`,
-      progress: 0,
-      customClass: getCustomClass("roadmap-bar", task),
-    };
-  }
-
-  if (chartType === "progress") {
-    return {
-      ...task,
-      name: `실제: ${task.name}${getOwnerSuffix(task)}`,
-      customClass: getCustomClass("progress-tracking-bar", task),
+      customClass: getCustomClass(
+        task.critical ? "milestone-marker-critical" : "milestone-marker",
+        task,
+      ),
     };
   }
 
   if (chartType === "wbs") {
+    const nodeType = task.nodeType ?? "task";
+    const date = task.date || task.start;
+    const labelPrefix = task.code ? `${task.code} ` : "";
+
     return {
       ...task,
-      name: task.phase
-        ? `${task.phase} / ${task.name}${getOwnerSuffix(task)}`
-        : `${task.name}${getOwnerSuffix(task)}`,
-      customClass: "wbs-bar",
+      name: `${labelPrefix}${task.name}${getOwnerSuffix(task)}`,
+      start: nodeType === "milestone" ? date : task.start,
+      end: nodeType === "milestone" ? date : task.end,
+      date,
+      progress: nodeType === "milestone" ? 100 : task.progress,
+      customClass:
+        nodeType === "group"
+          ? "wbs-group-row"
+          : nodeType === "milestone"
+            ? "wbs-milestone-row"
+            : "wbs-task-row",
     };
   }
 
@@ -530,31 +521,5 @@ export function getPreviewTasksForChartType(
   tasks: GanttTask[],
   chartType: GanttChartType,
 ): GanttTask[] {
-  if (chartType !== "progress") {
-    return tasks.map((task) => normalizeTaskForChartType(task, chartType));
-  }
-
-  return tasks.flatMap((task) => {
-    const actualTask = normalizeTaskForChartType(task, chartType);
-
-    if (!task.baselineStart || !task.baselineEnd) {
-      return [actualTask];
-    }
-
-    return [
-      {
-        ...task,
-        id: `${task.id}-baseline`,
-        name: `계획: ${task.name}${getOwnerSuffix(task)}`,
-        start: task.baselineStart,
-        end: task.baselineEnd,
-        progress: 0,
-        dependencies: [],
-        previewSourceId: task.id,
-        previewDateTarget: "readonly",
-        customClass: "baseline-bar",
-      },
-      actualTask,
-    ];
-  });
+  return tasks.map((task) => normalizeTaskForChartType(task, chartType));
 }

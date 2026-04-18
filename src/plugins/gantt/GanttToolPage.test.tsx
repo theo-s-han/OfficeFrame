@@ -8,11 +8,14 @@ describe("GanttEditorShell", () => {
 
     expect(screen.getByText("기본 일정표 preview")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "작업 추가" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "PNG 다운로드" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "이미지 만들기" })).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "이미지 다운로드" }),
+    ).toBeEnabled();
     expect(screen.getByLabelText("배경 템플릿")).toHaveValue("clean");
     expect(
       screen.getByRole("button", { name: "요구사항 정리 색상 선택" }),
-    ).toHaveTextContent("#14745F");
+    ).toHaveTextContent(/#[0-9A-F]{6}/);
     expect(
       screen.getByDisplayValue("요구사항 정리").closest("[aria-selected]"),
     ).toHaveAttribute("aria-selected", "true");
@@ -42,46 +45,68 @@ describe("GanttEditorShell", () => {
     expect(screen.getByLabelText("표시 종료")).toHaveValue("2026-Q2");
   });
 
-  it("switches inputs and preview copy by gantt chart type", () => {
+  it("removes roadmap and progress tracking buttons", () => {
+    render(<GanttEditorShell />);
+
+    expect(
+      screen.queryByRole("button", { name: /로드맵형/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /진행률 추적형/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("uses milestone-specific input fields and document preview", () => {
     render(<GanttEditorShell />);
 
     fireEvent.click(screen.getByRole("button", { name: /마일스톤형/ }));
 
-    expect(screen.getByText("마일스톤형 preview")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("범위 승인")).toBeInTheDocument();
-    expect(screen.getByLabelText("범위 승인 담당자")).toHaveValue("PM");
-    expect(screen.getByLabelText("범위 승인 상태")).toHaveValue("done");
-    expect(screen.queryByLabelText("범위 승인 종료")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/진행률/)).not.toBeInTheDocument();
+    expect(screen.getByText("마일스톤 preview")).toBeInTheDocument();
+    expect(screen.getByLabelText("프로젝트 킥오프 id")).toHaveValue(
+      "ms-kickoff",
+    );
+    expect(screen.getByLabelText("프로젝트 킥오프 날짜")).toHaveAttribute(
+      "type",
+      "date",
+    );
+    expect(screen.getByLabelText("프로젝트 킥오프 날짜")).toHaveValue(
+      "2026-04-20",
+    );
+    expect(screen.getByLabelText("프로젝트 킥오프 section")).toHaveValue(
+      "기획",
+    );
+    expect(screen.getByLabelText("프로젝트 킥오프 상태")).toHaveValue("done");
+    expect(screen.getByLabelText("프로젝트 킥오프 critical")).not.toBeChecked();
+    expect(
+      screen.queryByRole("option", { name: "위험" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "차단" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Mermaid Gantt")).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("프로젝트 킥오프 종료"),
+    ).not.toBeInTheDocument();
   });
 
-  it("uses chart-type specific input fields", () => {
+  it("uses WBS-specific hierarchy and node fields", () => {
     render(<GanttEditorShell />);
-
-    fireEvent.click(screen.getByRole("button", { name: /로드맵형/ }));
-
-    expect(screen.getByLabelText("핵심 입력 흐름 영역")).toHaveValue("Editor");
-    expect(screen.getByLabelText("핵심 입력 흐름 담당자")).toHaveValue(
-      "Product",
-    );
-    expect(screen.getByLabelText("핵심 입력 흐름 상태")).toHaveValue(
-      "on-track",
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: /진행률 추적형/ }));
-
-    expect(screen.getByLabelText("기획 확정 계획 시작")).toHaveValue(
-      "2026-W16",
-    );
-    expect(screen.getByLabelText("기획 확정 계획 종료")).toHaveValue(
-      "2026-W17",
-    );
 
     fireEvent.click(screen.getByRole("button", { name: /WBS\/단계형/ }));
 
-    expect(screen.getByLabelText("타입별 preview 구현 선행 작업")).toHaveValue(
-      "wbs-2",
+    expect(screen.getByText("WBS preview")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("wbs-plan")).toBeInTheDocument();
+    expect(screen.getByLabelText("기획 code")).toHaveValue("1");
+    expect(screen.getByLabelText("기획 nodeType")).toHaveValue("group");
+    expect(screen.getByLabelText("기획 open")).toBeChecked();
+    expect(screen.getByLabelText("사용자 시나리오 정리 parentId")).toHaveValue(
+      "wbs-plan",
     );
+    expect(screen.getByLabelText("입력 스키마 정의 dependsOn")).toHaveValue(
+      "wbs-scenario",
+    );
+    expect(screen.getByText("Mermaid TreeView")).toBeInTheDocument();
+    expect(screen.getByText("Mermaid Mindmap")).toBeInTheDocument();
   });
 
   it("changes basic project styling controls", () => {
@@ -93,13 +118,13 @@ describe("GanttEditorShell", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "요구사항 정리 색상 선택" }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "코랄 #C75D4F" }));
+    fireEvent.click(screen.getByRole("button", { name: "Dusty Rose #A65D7B" }));
     fireEvent.click(screen.getByRole("button", { name: "적용" }));
 
     expect(screen.getByLabelText("배경 템플릿")).toHaveValue("document");
     expect(
       screen.getByRole("button", { name: "요구사항 정리 색상 선택" }),
-    ).toHaveTextContent("#C75D4F");
+    ).toHaveTextContent("#A65D7B");
   });
 
   it("applies a custom HEX color through the basic project color dialog", () => {

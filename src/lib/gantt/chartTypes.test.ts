@@ -1,30 +1,68 @@
 import { describe, expect, it } from "vitest";
 import {
   createEmptyTaskForChartType,
+  ganttChartTypes,
   getPreviewTasksForChartType,
   getSampleTasksForChartType,
 } from "./chartTypes";
 
 describe("gantt chart type presets", () => {
+  it("removes roadmap and progress tracking type presets", () => {
+    expect(ganttChartTypes.map((type) => type.id)).toEqual([
+      "project",
+      "milestones",
+      "wbs",
+    ]);
+  });
+
   it("normalizes milestone charts to date-only markers", () => {
     const milestones = getPreviewTasksForChartType(
       [
         {
-          id: "task-1",
+          id: "ms-1",
           name: "승인",
-          start: "2026-05-10",
+          date: "2026-05-10",
+          start: "2026-05-01",
           end: "2026-05-15",
           progress: 0,
+          critical: true,
+          owner: "PM",
+          status: "done",
         },
       ],
       "milestones",
     );
 
     expect(milestones[0]).toMatchObject({
+      name: "승인 · PM",
       start: "2026-05-10",
       end: "2026-05-10",
       progress: 100,
-      customClass: "milestone-marker",
+      customClass: "milestone-marker-critical-status-done",
+    });
+  });
+
+  it("uses a compact milestone-only sample and weekly default view", () => {
+    const milestoneType = ganttChartTypes.find(
+      (type) => type.id === "milestones",
+    );
+    const sample = getSampleTasksForChartType("milestones");
+
+    expect(milestoneType?.defaultViewMode).toBe("Week");
+    expect(sample).toHaveLength(8);
+    expect(sample[0]).toMatchObject({
+      id: "ms-kickoff",
+      date: "2026-04-20",
+      section: "기획",
+      status: "done",
+      dependsOn: [],
+    });
+    expect(sample.at(-1)).toMatchObject({
+      id: "ms-release",
+      date: "2026-05-27",
+      section: "릴리즈",
+      status: "planned",
+      dependsOn: ["ms-qa"],
     });
   });
 
@@ -32,30 +70,33 @@ describe("gantt chart type presets", () => {
     const firstRead = getSampleTasksForChartType("wbs");
 
     firstRead[0].name = "변경된 이름";
+    firstRead[1].dependsOn?.push("mutated");
 
-    expect(getSampleTasksForChartType("wbs")[0].name).toBe(
-      "사용자 시나리오 정리",
-    );
+    expect(getSampleTasksForChartType("wbs")[0].name).toBe("기획");
+    expect(getSampleTasksForChartType("wbs")[1].dependsOn).toEqual([]);
   });
 
-  it("adds phase context to WBS preview labels", () => {
+  it("adds code and owner context to WBS preview labels", () => {
     const previewTasks = getPreviewTasksForChartType(
       [
         {
-          id: "task-1",
-          phase: "2. 설계",
+          id: "wbs-1",
+          code: "2.1",
           name: "입력 스키마",
+          parentId: "",
+          nodeType: "task",
           start: "2026-04-24",
           end: "2026-04-30",
           progress: 60,
+          owner: "UX",
         },
       ],
       "wbs",
     );
 
     expect(previewTasks[0]).toMatchObject({
-      name: "2. 설계 / 입력 스키마",
-      customClass: "wbs-bar",
+      name: "2.1 입력 스키마 · UX",
+      customClass: "wbs-task-row",
     });
   });
 
@@ -82,62 +123,21 @@ describe("gantt chart type presets", () => {
     });
   });
 
-  it("keeps basic project sample colors editable", () => {
-    expect(getSampleTasksForChartType("project")[0]).toMatchObject({
-      color: "#14745F",
-    });
-  });
-
-  it("adds baseline rows to progress tracking previews", () => {
-    const previewTasks = getPreviewTasksForChartType(
-      [
-        {
-          id: "task-1",
-          name: "구현",
-          start: "2026-05-01",
-          end: "2026-05-08",
-          progress: 40,
-          baselineStart: "2026-04-29",
-          baselineEnd: "2026-05-05",
-          status: "at-risk",
-        },
-      ],
-      "progress",
-    );
-
-    expect(previewTasks).toHaveLength(2);
-    expect(previewTasks[0]).toMatchObject({
-      id: "task-1-baseline",
-      previewSourceId: "task-1",
-      previewDateTarget: "readonly",
-      start: "2026-04-29",
-      end: "2026-05-05",
-      customClass: "baseline-bar",
-    });
-    expect(previewTasks[1]).toMatchObject({
-      id: "task-1",
-      name: "실제: 구현",
-      customClass: "progress-tracking-bar-status-at-risk",
-    });
-  });
-
   it("creates type-aware empty tasks for editor tests", () => {
     expect(createEmptyTaskForChartType([], "milestones")).toMatchObject({
       name: "새 마일스톤",
+      date: expect.any(String),
       progress: 100,
-      customClass: "milestone-marker",
+      dependsOn: [],
+      critical: false,
     });
 
-    expect(createEmptyTaskForChartType([], "roadmap")).toMatchObject({
-      name: "새 로드맵 항목",
-      phase: "영역",
-      status: "planned",
-    });
-
-    expect(createEmptyTaskForChartType([], "progress")).toMatchObject({
-      name: "새 추적 작업",
-      status: "planned",
-      baselineStart: expect.any(String),
+    expect(createEmptyTaskForChartType([], "wbs")).toMatchObject({
+      name: "새 작업",
+      code: "1",
+      nodeType: "task",
+      dependsOn: [],
+      open: true,
     });
   });
 });

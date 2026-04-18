@@ -17,6 +17,8 @@
   "dependencies": {
     "frappe-gantt": "^1.2.2",
     "html-to-image": "^1.11.13",
+    "jsgantt-improved": "^3.0.0",
+    "mermaid": "^11.14.0",
     "next": "latest",
     "react": "latest",
     "react-dom": "latest"

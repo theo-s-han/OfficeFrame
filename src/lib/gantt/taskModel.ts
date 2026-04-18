@@ -1,11 +1,8 @@
+import { defaultGanttPalette } from "./theme";
+
 export type GanttViewMode = "Day" | "Week" | "Month" | "Quarter";
 export type GanttDateUnit = "day" | "week" | "month" | "quarter";
-export type GanttChartType =
-  | "project"
-  | "roadmap"
-  | "milestones"
-  | "progress"
-  | "wbs";
+export type GanttChartType = "project" | "milestones" | "wbs";
 export type GanttTaskStatus =
   | "planned"
   | "on-track"
@@ -18,6 +15,7 @@ export type GanttBackgroundTemplate =
   | "lined"
   | "document"
   | "contrast";
+export type WbsNodeType = "group" | "task" | "milestone";
 
 export type GanttTask = {
   id: string;
@@ -25,12 +23,22 @@ export type GanttTask = {
   start: string;
   end: string;
   progress: number;
+  date?: string;
+  section?: string;
   phase?: string;
   owner?: string;
   status?: GanttTaskStatus;
   baselineStart?: string;
   baselineEnd?: string;
   color?: GanttTaskColor;
+  code?: string;
+  parentId?: string;
+  nodeType?: WbsNodeType;
+  stage?: string;
+  dependsOn?: string[];
+  notes?: string;
+  critical?: boolean;
+  open?: boolean;
   customClass?: string;
   dependencies?: string[];
   previewSourceId?: string;
@@ -48,16 +56,27 @@ export type GanttEditorShellState = {
 };
 
 export type GanttTaskField =
+  | "id"
   | "name"
   | "start"
   | "end"
+  | "date"
   | "progress"
+  | "section"
   | "phase"
   | "owner"
   | "status"
   | "baselineStart"
   | "baselineEnd"
   | "color"
+  | "code"
+  | "parentId"
+  | "nodeType"
+  | "stage"
+  | "dependsOn"
+  | "notes"
+  | "critical"
+  | "open"
   | "dependencies";
 
 export type GanttValidationIssue = {
@@ -82,12 +101,22 @@ export type GanttDebugSnapshot = {
     start: string;
     end: string;
     progress: number;
+    date?: string;
+    section?: string;
     phase?: string;
     owner?: string;
     status?: GanttTaskStatus;
     baselineStart?: string;
     baselineEnd?: string;
     color?: GanttTaskColor;
+    code?: string;
+    parentId?: string;
+    nodeType?: WbsNodeType;
+    stage?: string;
+    dependsOn?: string[];
+    notes?: string;
+    critical?: boolean;
+    open?: boolean;
     dependencies?: string[];
   }>;
 };
@@ -95,7 +124,7 @@ export type GanttDebugSnapshot = {
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const colorPattern = /^#[0-9a-fA-F]{6}$/;
 
-export const defaultGanttTaskColor = "#14745F";
+export const defaultGanttTaskColor = defaultGanttPalette.taskColors[0];
 
 export const ganttTaskStatusOptions: Array<{
   value: GanttTaskStatus;
@@ -108,23 +137,24 @@ export const ganttTaskStatusOptions: Array<{
   { value: "done", label: "완료" },
 ];
 
+export const milestoneTaskStatusOptions = ganttTaskStatusOptions.filter(
+  (option) =>
+    option.value === "planned" ||
+    option.value === "on-track" ||
+    option.value === "done",
+);
+
 export const ganttTaskColorOptions: Array<{
   value: GanttTaskColor;
   label: string;
   description: string;
 }> = [
-  { value: "#14745F", label: "에메랄드", description: "안정적인 일정" },
-  { value: "#2F8F89", label: "틸", description: "협업 작업" },
-  { value: "#2F6F9F", label: "블루", description: "검토 항목" },
-  { value: "#4F6FAA", label: "인디고", description: "기술 작업" },
-  { value: "#B7831D", label: "골드", description: "마감/주의" },
-  { value: "#C75D4F", label: "코랄", description: "중요 일정" },
-  { value: "#B45F7A", label: "로즈", description: "승인/검수" },
-  { value: "#7A7F37", label: "올리브", description: "운영 작업" },
-  { value: "#3F7D5F", label: "그린", description: "진행 작업" },
-  { value: "#5A6A76", label: "스틸", description: "보조 일정" },
-  { value: "#8A6F2A", label: "브론즈", description: "리스크" },
-  { value: "#69736E", label: "그레이", description: "일반 항목" },
+  { value: "#5B6EE1", label: "Indigo Blue", description: "핵심 일정" },
+  { value: "#2F7E9E", label: "Teal Blue", description: "기획/분석" },
+  { value: "#4E8B63", label: "Muted Green", description: "운영 안정" },
+  { value: "#A07A2E", label: "Soft Ochre", description: "검토/주의" },
+  { value: "#A65D7B", label: "Dusty Rose", description: "승인/의사결정" },
+  { value: "#7A68B8", label: "Soft Violet", description: "기술/지원" },
 ];
 
 export const ganttBackgroundTemplateOptions: Array<{
@@ -135,6 +165,15 @@ export const ganttBackgroundTemplateOptions: Array<{
   { value: "lined", label: "라인 강조" },
   { value: "document", label: "문서형" },
   { value: "contrast", label: "고대비" },
+];
+
+export const wbsNodeTypeOptions: Array<{
+  value: WbsNodeType;
+  label: string;
+}> = [
+  { value: "group", label: "Group" },
+  { value: "task", label: "Task" },
+  { value: "milestone", label: "Milestone" },
 ];
 
 export type GanttDatePatchResult =
@@ -230,6 +269,21 @@ export function compareDateInputs(left: string, right: string): number {
   );
 }
 
+export function parseDependencyInput(value: string, currentTaskId?: string) {
+  return value
+    .split(",")
+    .map((dependency) => dependency.trim())
+    .filter(
+      (dependency) =>
+        dependency.length > 0 &&
+        (!currentTaskId || dependency !== currentTaskId),
+    );
+}
+
+export function getTaskDependencyIds(task: GanttTask): string[] {
+  return task.dependsOn ?? task.dependencies ?? [];
+}
+
 export function updateGanttTask(
   tasks: GanttTask[],
   taskId: string,
@@ -245,6 +299,27 @@ export function updateGanttTask(
   );
 }
 
+export function updateGanttTaskId(
+  tasks: GanttTask[],
+  previousId: string,
+  nextId: string,
+): GanttTask[] {
+  return tasks.map((task) => {
+    if (task.id === previousId) {
+      return { ...task, id: nextId };
+    }
+
+    return {
+      ...task,
+      parentId: task.parentId === previousId ? nextId : task.parentId,
+      dependsOn: task.dependsOn?.map((id) => (id === previousId ? nextId : id)),
+      dependencies: task.dependencies?.map((id) =>
+        id === previousId ? nextId : id,
+      ),
+    };
+  });
+}
+
 export function addGanttTask(
   tasks: GanttTask[],
   task?: GanttTask,
@@ -256,7 +331,18 @@ export function removeGanttTask(
   tasks: GanttTask[],
   taskId: string,
 ): GanttTask[] {
-  return tasks.filter((task) => task.id !== taskId);
+  return tasks
+    .filter((task) => task.id !== taskId)
+    .map((task) => ({
+      ...task,
+      parentId: task.parentId === taskId ? "" : task.parentId,
+      dependsOn: task.dependsOn?.filter(
+        (dependencyId) => dependencyId !== taskId,
+      ),
+      dependencies: task.dependencies?.filter(
+        (dependencyId) => dependencyId !== taskId,
+      ),
+    }));
 }
 
 export function applyGanttDateChange(
@@ -307,31 +393,45 @@ export function applyGanttProgressChange(
   return updateGanttTask(tasks, taskId, { progress: clampProgress(progress) });
 }
 
-export function validateGanttTask(task: GanttTask): GanttValidationIssue[] {
+function createIssue(
+  task: GanttTask,
+  field: GanttTaskField,
+  message: string,
+): GanttValidationIssue {
+  return {
+    taskId: task.id,
+    field,
+    message,
+  };
+}
+
+function validateCommonTaskIdentity(task: GanttTask): GanttValidationIssue[] {
   const issues: GanttValidationIssue[] = [];
 
-  if (task.name.trim().length === 0) {
-    issues.push({
-      taskId: task.id,
-      field: "name",
-      message: "작업명을 입력하세요.",
-    });
+  if (task.id.trim().length === 0) {
+    issues.push(createIssue(task, "id", "id를 입력하세요."));
   }
 
+  if (task.name.trim().length === 0) {
+    issues.push(createIssue(task, "name", "이름을 입력하세요."));
+  }
+
+  return issues;
+}
+
+function validateProjectTask(task: GanttTask): GanttValidationIssue[] {
+  const issues = validateCommonTaskIdentity(task);
+
   if (!isValidDateInput(task.start)) {
-    issues.push({
-      taskId: task.id,
-      field: "start",
-      message: "시작일은 YYYY-MM-DD 형식이어야 합니다.",
-    });
+    issues.push(
+      createIssue(task, "start", "시작일은 YYYY-MM-DD 형식이어야 합니다."),
+    );
   }
 
   if (!isValidDateInput(task.end)) {
-    issues.push({
-      taskId: task.id,
-      field: "end",
-      message: "종료일은 YYYY-MM-DD 형식이어야 합니다.",
-    });
+    issues.push(
+      createIssue(task, "end", "종료일은 YYYY-MM-DD 형식이어야 합니다."),
+    );
   }
 
   if (
@@ -339,43 +439,41 @@ export function validateGanttTask(task: GanttTask): GanttValidationIssue[] {
     isValidDateInput(task.end) &&
     compareDateInputs(task.end, task.start) < 0
   ) {
-    issues.push({
-      taskId: task.id,
-      field: "end",
-      message: "종료일은 시작일보다 빠를 수 없습니다.",
-    });
+    issues.push(
+      createIssue(task, "end", "종료일은 시작일보다 빠를 수 없습니다."),
+    );
   }
 
   if (task.progress < 0 || task.progress > 100 || Number.isNaN(task.progress)) {
-    issues.push({
-      taskId: task.id,
-      field: "progress",
-      message: "진행률은 0부터 100 사이여야 합니다.",
-    });
+    issues.push(
+      createIssue(task, "progress", "진행률은 0부터 100 사이여야 합니다."),
+    );
   }
 
   if (task.color && !isValidGanttTaskColor(task.color)) {
-    issues.push({
-      taskId: task.id,
-      field: "color",
-      message: "색상은 #RRGGBB 형식이어야 합니다.",
-    });
+    issues.push(
+      createIssue(task, "color", "색상은 #RRGGBB 형식이어야 합니다."),
+    );
   }
 
   if (task.baselineStart && !isValidDateInput(task.baselineStart)) {
-    issues.push({
-      taskId: task.id,
-      field: "baselineStart",
-      message: "계획 시작일은 YYYY-MM-DD 형식이어야 합니다.",
-    });
+    issues.push(
+      createIssue(
+        task,
+        "baselineStart",
+        "계획 시작일은 YYYY-MM-DD 형식이어야 합니다.",
+      ),
+    );
   }
 
   if (task.baselineEnd && !isValidDateInput(task.baselineEnd)) {
-    issues.push({
-      taskId: task.id,
-      field: "baselineEnd",
-      message: "계획 종료일은 YYYY-MM-DD 형식이어야 합니다.",
-    });
+    issues.push(
+      createIssue(
+        task,
+        "baselineEnd",
+        "계획 종료일은 YYYY-MM-DD 형식이어야 합니다.",
+      ),
+    );
   }
 
   if (
@@ -385,23 +483,261 @@ export function validateGanttTask(task: GanttTask): GanttValidationIssue[] {
     isValidDateInput(task.baselineEnd) &&
     compareDateInputs(task.baselineEnd, task.baselineStart) < 0
   ) {
-    issues.push({
-      taskId: task.id,
-      field: "baselineEnd",
-      message: "계획 종료일은 계획 시작일보다 빠를 수 없습니다.",
+    issues.push(
+      createIssue(
+        task,
+        "baselineEnd",
+        "계획 종료일은 계획 시작일보다 빠를 수 없습니다.",
+      ),
+    );
+  }
+
+  return issues;
+}
+
+function validateMilestoneTask(task: GanttTask): GanttValidationIssue[] {
+  const issues = validateCommonTaskIdentity(task);
+
+  if (!task.date || !isValidDateInput(task.date)) {
+    issues.push(
+      createIssue(
+        task,
+        "date",
+        "마일스톤 날짜는 YYYY-MM-DD 하루 단위 날짜여야 합니다.",
+      ),
+    );
+  }
+
+  if (
+    task.status &&
+    !milestoneTaskStatusOptions.some((option) => option.value === task.status)
+  ) {
+    issues.push(
+      createIssue(
+        task,
+        "status",
+        "마일스톤 상태는 planned, on-track, done만 사용할 수 있습니다.",
+      ),
+    );
+  }
+
+  return issues;
+}
+
+function validateWbsTask(task: GanttTask): GanttValidationIssue[] {
+  const issues = validateCommonTaskIdentity(task);
+  const nodeType = task.nodeType ?? "task";
+
+  if (!["group", "task", "milestone"].includes(nodeType)) {
+    issues.push(
+      createIssue(
+        task,
+        "nodeType",
+        "nodeType은 group/task/milestone이어야 합니다.",
+      ),
+    );
+  }
+
+  if (nodeType === "task") {
+    if (!isValidDateInput(task.start)) {
+      issues.push(
+        createIssue(task, "start", "leaf task는 시작일이 필요합니다."),
+      );
+    }
+
+    if (!isValidDateInput(task.end)) {
+      issues.push(createIssue(task, "end", "leaf task는 종료일이 필요합니다."));
+    }
+
+    if (
+      isValidDateInput(task.start) &&
+      isValidDateInput(task.end) &&
+      compareDateInputs(task.end, task.start) < 0
+    ) {
+      issues.push(
+        createIssue(task, "end", "종료일은 시작일보다 빠를 수 없습니다."),
+      );
+    }
+
+    if (
+      task.progress < 0 ||
+      task.progress > 100 ||
+      Number.isNaN(task.progress)
+    ) {
+      issues.push(
+        createIssue(task, "progress", "진행률은 0부터 100 사이여야 합니다."),
+      );
+    }
+  }
+
+  if (
+    nodeType === "milestone" &&
+    (!task.date || !isValidDateInput(task.date))
+  ) {
+    issues.push(createIssue(task, "date", "milestone은 date가 필요합니다."));
+  }
+
+  return issues;
+}
+
+function findDuplicateValues<T extends string>(values: T[]): Map<T, number> {
+  const counts = new Map<T, number>();
+
+  values.forEach((value) => {
+    if (!value) {
+      return;
+    }
+
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  });
+
+  return new Map([...counts].filter(([, count]) => count > 1));
+}
+
+function findDependencyCycleTaskIds(tasks: GanttTask[]): Set<string> {
+  const graph = new Map(
+    tasks.map((task) => [
+      task.id,
+      getTaskDependencyIds(task).filter(
+        (dependencyId) =>
+          dependencyId !== task.id &&
+          tasks.some((candidate) => candidate.id === dependencyId),
+      ),
+    ]),
+  );
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  const cycleTaskIds = new Set<string>();
+
+  function visit(taskId: string, path: string[]): boolean {
+    if (visiting.has(taskId)) {
+      const cycleStartIndex = path.indexOf(taskId);
+      path.slice(cycleStartIndex).forEach((id) => cycleTaskIds.add(id));
+      cycleTaskIds.add(taskId);
+      return true;
+    }
+
+    if (visited.has(taskId)) {
+      return false;
+    }
+
+    visiting.add(taskId);
+
+    for (const dependencyId of graph.get(taskId) ?? []) {
+      visit(dependencyId, [...path, dependencyId]);
+    }
+
+    visiting.delete(taskId);
+    visited.add(taskId);
+
+    return cycleTaskIds.has(taskId);
+  }
+
+  graph.forEach((_, taskId) => visit(taskId, [taskId]));
+
+  return cycleTaskIds;
+}
+
+function validateTaskCollection(
+  tasks: GanttTask[],
+  chartType: GanttChartType,
+): GanttValidationIssue[] {
+  const issues: GanttValidationIssue[] = [];
+  const duplicateIds = findDuplicateValues(tasks.map((task) => task.id.trim()));
+
+  if (chartType === "milestones" || chartType === "wbs") {
+    tasks.forEach((task) => {
+      if (duplicateIds.has(task.id.trim())) {
+        issues.push(createIssue(task, "id", "id는 중복될 수 없습니다."));
+      }
+    });
+  }
+
+  if (chartType === "wbs") {
+    const ids = new Set(tasks.map((task) => task.id));
+    const duplicateCodes = findDuplicateValues(
+      tasks.map((task) => task.code?.trim() ?? "").filter(Boolean),
+    );
+
+    tasks.forEach((task) => {
+      if (task.parentId && !ids.has(task.parentId)) {
+        issues.push(
+          createIssue(task, "parentId", "존재하는 parentId를 선택하세요."),
+        );
+      }
+
+      if (task.code && duplicateCodes.has(task.code.trim())) {
+        issues.push(createIssue(task, "code", "code는 중복될 수 없습니다."));
+      }
+    });
+  }
+
+  if (chartType === "milestones" || chartType === "wbs") {
+    const ids = new Set(tasks.map((task) => task.id));
+    const cycleTaskIds = findDependencyCycleTaskIds(tasks);
+
+    tasks.forEach((task) => {
+      getTaskDependencyIds(task).forEach((dependencyId) => {
+        if (dependencyId === task.id) {
+          issues.push(
+            createIssue(
+              task,
+              "dependsOn",
+              "자기 자신을 dependsOn으로 참조할 수 없습니다.",
+            ),
+          );
+          return;
+        }
+
+        if (!ids.has(dependencyId)) {
+          issues.push(
+            createIssue(task, "dependsOn", "존재하지 않는 의존성 ID입니다."),
+          );
+        }
+      });
+
+      if (cycleTaskIds.has(task.id)) {
+        issues.push(
+          createIssue(task, "dependsOn", "순환 의존성은 허용되지 않습니다."),
+        );
+      }
     });
   }
 
   return issues;
 }
 
-export function validateGanttTasks(tasks: GanttTask[]): GanttValidationIssue[] {
-  return tasks.flatMap(validateGanttTask);
+export function validateGanttTask(
+  task: GanttTask,
+  chartType: GanttChartType = "project",
+): GanttValidationIssue[] {
+  if (chartType === "milestones") {
+    return validateMilestoneTask(task);
+  }
+
+  if (chartType === "wbs") {
+    return validateWbsTask(task);
+  }
+
+  return validateProjectTask(task);
 }
 
-export function getValidPreviewTasks(tasks: GanttTask[]): GanttTask[] {
+export function validateGanttTasks(
+  tasks: GanttTask[],
+  chartType: GanttChartType = "project",
+): GanttValidationIssue[] {
+  return [
+    ...tasks.flatMap((task) => validateGanttTask(task, chartType)),
+    ...validateTaskCollection(tasks, chartType),
+  ];
+}
+
+export function getValidPreviewTasks(
+  tasks: GanttTask[],
+  chartType: GanttChartType = "project",
+): GanttTask[] {
   const issueTaskIds = new Set(
-    validateGanttTasks(tasks).map((issue) => issue.taskId),
+    validateGanttTasks(tasks, chartType).map((issue) => issue.taskId),
   );
 
   return tasks.filter((task) => !issueTaskIds.has(task.id));
@@ -410,8 +746,8 @@ export function getValidPreviewTasks(tasks: GanttTask[]): GanttTask[] {
 export function createGanttDebugSnapshot(
   state: GanttEditorShellState,
 ): GanttDebugSnapshot {
-  const issues = validateGanttTasks(state.tasks);
-  const validTasks = getValidPreviewTasks(state.tasks);
+  const issues = validateGanttTasks(state.tasks, state.chartType);
+  const validTasks = getValidPreviewTasks(state.tasks, state.chartType);
 
   return {
     taskCount: state.tasks.length,
@@ -429,12 +765,22 @@ export function createGanttDebugSnapshot(
       start: task.start,
       end: task.end,
       progress: task.progress,
+      date: task.date,
+      section: task.section,
       phase: task.phase,
       owner: task.owner,
       status: task.status,
       baselineStart: task.baselineStart,
       baselineEnd: task.baselineEnd,
       color: task.color,
+      code: task.code,
+      parentId: task.parentId,
+      nodeType: task.nodeType,
+      stage: task.stage,
+      dependsOn: task.dependsOn,
+      notes: task.notes,
+      critical: task.critical,
+      open: task.open,
       dependencies: task.dependencies,
     })),
   };
