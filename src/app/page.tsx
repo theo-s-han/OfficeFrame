@@ -5,11 +5,11 @@ export default function HomePage() {
   return (
     <main className="home-page">
       <section className="home-hero" aria-labelledby="home-title">
-        <div className="eyebrow">문서용 시각화 허브</div>
-        <h1 id="home-title">오피스 문서에 바로 쓰는 시각화 도구</h1>
+        <div className="eyebrow">문서용 구조 시각화 도구</div>
+        <h1 id="home-title">오피스 문서에 바로 붙일 수 있는 시각화 툴킷</h1>
         <p>
-          지금은 실행 골격 단계입니다. 간트 차트와 마인드맵이 먼저 열려 있고,
-          나머지 도구는 plugin 확장 후보로 표시합니다.
+          간트 차트, 마인드맵, 조직도, 플로우차트, 타임라인을 같은 방식의
+          입력, 미리보기, 이미지 내보내기 흐름으로 정리했습니다.
         </p>
       </section>
 

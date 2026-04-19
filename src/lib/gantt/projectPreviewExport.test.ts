@@ -384,4 +384,103 @@ describe("project preview export", () => {
       }),
     ).toBeLessThanOrEqual(0.01);
   });
+
+  it("preserves configured trailing padding while trimming", async () => {
+    const width = 220;
+    const height = 120;
+    const pixelData = new Uint8ClampedArray(width * height * 4);
+
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const index = (y * width + x) * 4;
+        const isChartPixel = x < 160 && y < 72;
+
+        pixelData[index] = isChartPixel ? 31 : 255;
+        pixelData[index + 1] = isChartPixel ? 41 : 255;
+        pixelData[index + 2] = isChartPixel ? 55 : 255;
+        pixelData[index + 3] = 255;
+      }
+    }
+
+    const baseContext = {
+      arc: vi.fn(),
+      beginPath: vi.fn(),
+      drawImage: vi.fn(),
+      fill: vi.fn(),
+      fillRect: vi.fn(),
+      fillStyle: "",
+      fillText: vi.fn(),
+      font: "",
+      getImageData: vi.fn(() => ({ data: pixelData })),
+      restore: vi.fn(),
+      roundRect: vi.fn(),
+      save: vi.fn(),
+      scale: vi.fn(),
+      stroke: vi.fn(),
+      strokeStyle: "",
+    };
+    const trimmedContext = {
+      arc: vi.fn(),
+      beginPath: vi.fn(),
+      drawImage: vi.fn(),
+      fill: vi.fn(),
+      fillRect: vi.fn(),
+      fillStyle: "",
+      fillText: vi.fn(),
+      font: "",
+      getImageData: undefined,
+      restore: vi.fn(),
+      roundRect: vi.fn(),
+      save: vi.fn(),
+      scale: vi.fn(),
+      stroke: vi.fn(),
+      strokeStyle: "",
+    };
+    const baseCanvas = {
+      getContext: vi.fn(() => baseContext),
+      height: 0,
+      style: {},
+      toDataURL: vi.fn(() => "data:image/png;base64,BASE"),
+      width: 0,
+    };
+    const trimmedCanvas = {
+      getContext: vi.fn(() => trimmedContext),
+      height: 0,
+      style: {},
+      toDataURL: vi.fn(() => "data:image/png;base64,TRIMMED_PADDED"),
+      width: 0,
+    };
+    const createCanvas = vi
+      .fn(() => baseCanvas as typeof baseCanvas | typeof trimmedCanvas)
+      .mockReturnValueOnce(baseCanvas)
+      .mockReturnValueOnce(trimmedCanvas);
+
+    const dataUrl = await renderProjectPreviewExportModel(
+      {
+        background: "#ffffff",
+        height,
+        overlays: [],
+        svgDataUrl: "data:image/svg+xml;charset=utf-8,%3Csvg%20/%3E",
+        svgHeight: 72,
+        svgWidth: 160,
+        svgX: 0,
+        svgY: 0,
+        trailingPadding: {
+          bottom: 24,
+          right: 0,
+        },
+        width,
+      },
+      {
+        createCanvas,
+        loadSvgImage: async () =>
+          ({ width: 160, height: 72 }) as CanvasImageSource,
+        pixelRatio: 1,
+      },
+    );
+
+    expect(dataUrl).toBe("data:image/png;base64,TRIMMED_PADDED");
+    expect(trimmedCanvas.width).toBe(160);
+    expect(trimmedCanvas.height).toBe(96);
+  });
 });

@@ -29,12 +29,27 @@ describe("stabilizeSvgAnimations", () => {
         <svg xmlns="http://www.w3.org/2000/svg">
           <rect class="grid-background" style="fill: rgb(0, 0, 0)" />
           <rect class="bar" style="fill: rgb(91, 110, 225); stroke: rgb(84, 101, 207); stroke-width: 0.8" />
+          <text
+            class="label"
+            style="
+              fill: rgb(31, 41, 55);
+              font-family: 'Segoe UI', Arial, sans-serif;
+              font-size: 13px;
+              font-weight: 400;
+              font-synthesis: none;
+              text-rendering: optimizeLegibility;
+              paint-order: normal;
+            "
+          >
+            WBS
+          </text>
         </svg>
       </div>
       <div id="clone-root">
         <svg xmlns="http://www.w3.org/2000/svg">
           <rect class="grid-background" />
           <rect class="bar" />
+          <text class="label" />
         </svg>
       </div>
     `;
@@ -44,8 +59,9 @@ describe("stabilizeSvgAnimations", () => {
     const cloneBar = cloneRoot?.querySelector<SVGElement>(".bar");
     const cloneBackground =
       cloneRoot?.querySelector<SVGElement>(".grid-background");
+    const cloneLabel = cloneRoot?.querySelector<SVGElement>(".label");
 
-    if (!sourceRoot || !cloneRoot || !cloneBar || !cloneBackground) {
+    if (!sourceRoot || !cloneRoot || !cloneBar || !cloneBackground || !cloneLabel) {
       throw new Error("test setup failed");
     }
 
@@ -54,6 +70,10 @@ describe("stabilizeSvgAnimations", () => {
     expect(cloneBar.style.fill).toBe("rgb(91, 110, 225)");
     expect(cloneBar.style.stroke).toBe("rgb(84, 101, 207)");
     expect(cloneBar.style.strokeWidth).toBe("0.8");
+    expect(cloneLabel.style.fontFamily).toContain("Segoe UI");
+    expect(cloneLabel.style.fontSynthesis).toBe("none");
+    expect(cloneLabel.style.textRendering).toBe("optimizelegibility");
+    expect(cloneLabel.style.paintOrder).toBe("normal");
     expect(cloneBackground.getAttribute("fill")).toBe("none");
     expect(cloneBackground.style.fill).toBe("none");
   });

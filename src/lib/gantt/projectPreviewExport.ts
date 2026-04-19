@@ -46,6 +46,10 @@ export type ProjectPreviewExportModel = {
   svgWidth: number;
   svgX: number;
   svgY: number;
+  trailingPadding?: {
+    bottom: number;
+    right: number;
+  };
   width: number;
 };
 
@@ -637,12 +641,26 @@ export async function renderProjectPreviewExportModel(
       canvas.height,
       model.background,
     );
+    const trailingPadding = model.trailingPadding ?? {
+      bottom: 0,
+      right: 0,
+    };
+    const paddedRenderedBounds = {
+      width: Math.min(
+        canvas.width,
+        renderedBounds.width + trailingPadding.right * pixelRatio,
+      ),
+      height: Math.min(
+        canvas.height,
+        renderedBounds.height + trailingPadding.bottom * pixelRatio,
+      ),
+    };
 
     if (
-      renderedBounds.width > 0 &&
-      renderedBounds.height > 0 &&
-      (renderedBounds.width < canvas.width ||
-        renderedBounds.height < canvas.height)
+      paddedRenderedBounds.width > 0 &&
+      paddedRenderedBounds.height > 0 &&
+      (paddedRenderedBounds.width < canvas.width ||
+        paddedRenderedBounds.height < canvas.height)
     ) {
       const trimmedCanvas =
         options?.createCanvas?.() ??
@@ -650,23 +668,23 @@ export async function renderProjectPreviewExportModel(
       const trimmedContext = trimmedCanvas.getContext("2d");
 
       if (trimmedContext) {
-        trimmedCanvas.width = renderedBounds.width;
-        trimmedCanvas.height = renderedBounds.height;
+        trimmedCanvas.width = paddedRenderedBounds.width;
+        trimmedCanvas.height = paddedRenderedBounds.height;
         if (trimmedCanvas.style) {
-          trimmedCanvas.style.width = `${renderedBounds.width / pixelRatio}px`;
-          trimmedCanvas.style.height = `${renderedBounds.height / pixelRatio}px`;
+          trimmedCanvas.style.width = `${paddedRenderedBounds.width / pixelRatio}px`;
+          trimmedCanvas.style.height = `${paddedRenderedBounds.height / pixelRatio}px`;
         }
 
         trimmedContext.drawImage(
           canvas as unknown as CanvasImageSource,
           0,
           0,
-          renderedBounds.width,
-          renderedBounds.height,
+          paddedRenderedBounds.width,
+          paddedRenderedBounds.height,
           0,
           0,
-          renderedBounds.width,
-          renderedBounds.height,
+          paddedRenderedBounds.width,
+          paddedRenderedBounds.height,
         );
 
         return trimmedCanvas.toDataURL("image/png");

@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { getActiveTools, getToolById, toolRegistry } from "./registry";
 
 describe("toolRegistry", () => {
-  it("registers gantt and mindmap as active tools", () => {
+  it("registers all current document tools as active", () => {
     const activeTools = getActiveTools();
 
-    expect(activeTools).toHaveLength(2);
+    expect(activeTools).toHaveLength(5);
     expect(activeTools).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -18,25 +18,35 @@ describe("toolRegistry", () => {
           status: "active",
           href: "/mindmap",
         }),
+        expect.objectContaining({
+          id: "org-chart",
+          status: "active",
+          href: "/org-chart",
+        }),
+        expect.objectContaining({
+          id: "flowchart",
+          status: "active",
+          href: "/flowchart",
+        }),
+        expect.objectContaining({
+          id: "timeline",
+          status: "active",
+          href: "/timeline",
+        }),
       ]),
     );
   });
 
-  it("keeps future tools visible as placeholders", () => {
-    const placeholders = toolRegistry.filter(
-      (tool) => tool.status === "placeholder",
-    );
-
-    expect(placeholders.map((tool) => tool.id)).toEqual([
-      "org-chart",
-      "flowchart",
-      "timeline",
-    ]);
+  it("keeps every registered tool available from the home registry", () => {
+    expect(toolRegistry.every((tool) => tool.status === "active")).toBe(true);
   });
 
   it("finds registered tools by id", () => {
-    expect(getToolById("gantt")?.name).toBe("간트 차트");
-    expect(getToolById("mindmap")?.name).toBe("마인드맵");
+    expect(getToolById("gantt")?.href).toBe("/gantt");
+    expect(getToolById("mindmap")?.href).toBe("/mindmap");
+    expect(getToolById("org-chart")?.href).toBe("/org-chart");
+    expect(getToolById("flowchart")?.href).toBe("/flowchart");
+    expect(getToolById("timeline")?.href).toBe("/timeline");
     expect(getToolById("missing")).toBeUndefined();
   });
 });

@@ -3,26 +3,23 @@ import { describe, expect, it } from "vitest";
 import HomePage from "./page";
 
 describe("HomePage", () => {
-  it("shows the active gantt and mindmap entries plus future placeholders", () => {
+  it("shows all active visualization tools", () => {
     render(<HomePage />);
 
-    expect(
-      screen.getByRole("heading", {
-        name: "오피스 문서에 바로 쓰는 시각화 도구",
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "간트 차트" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "마인드맵" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(5);
 
-    const startLinks = screen.getAllByRole("link", { name: "시작하기" });
+    const startLinks = screen.getAllByRole("link");
+    const hrefs = startLinks.map((link) => link.getAttribute("href"));
 
-    expect(startLinks).toHaveLength(2);
-    expect(startLinks[0]).toHaveAttribute("href", "/gantt");
-    expect(startLinks[1]).toHaveAttribute("href", "/mindmap");
-    expect(screen.getAllByText("준비중")).toHaveLength(6);
+    expect(hrefs).toEqual(
+      expect.arrayContaining([
+        "/gantt",
+        "/mindmap",
+        "/org-chart",
+        "/flowchart",
+        "/timeline",
+      ]),
+    );
   });
 });

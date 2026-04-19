@@ -19,7 +19,7 @@ const tasks: GanttTask[] = [
     progress: 0,
     owner: "PM",
     status: "in-progress",
-    notes: "상위 구조",
+    notes: "상위 구조와 입력 흐름을 먼저 정리합니다.",
   },
   {
     id: "doc",
@@ -30,7 +30,7 @@ const tasks: GanttTask[] = [
     progress: 0,
     owner: "PM",
     status: "done",
-    notes: "문서 정리",
+    notes: "문서용 설명 문구까지 함께 작성합니다.",
   },
   {
     id: "build",
@@ -41,7 +41,7 @@ const tasks: GanttTask[] = [
     progress: 0,
     owner: "Dev Lead",
     status: "not-started",
-    notes: "준비 작업",
+    notes: "미리보기와 이미지 내보내기 품질 기준을 정리합니다.",
   },
 ];
 
@@ -63,6 +63,14 @@ describe("wbsTree helpers", () => {
       id: "build",
       code: "2",
     });
+  });
+
+  it("keeps preview text intact without truncating long owner or notes content", () => {
+    const nodes = buildWbsTreeNodes(tasks, defaultWbsStructureType);
+
+    expect(nodes[1]?.owner).toBe("Dev Lead");
+    expect(nodes[1]?.notes).toContain("이미지 내보내기");
+    expect(nodes[1]?.notes?.includes("…")).toBe(false);
   });
 
   it("converts WBS nodes into preview data with project root metadata", () => {
@@ -92,7 +100,6 @@ describe("wbsTree helpers", () => {
 
     expect(descendants).toEqual(new Set(["doc"]));
     expect(parentOptions.map((option) => option.value)).toEqual(["build"]);
-    expect(parentOptions[0].label).toBe("2 구현 준비");
+    expect(parentOptions[0]?.label).toBe("2 구현 준비");
   });
 });
-

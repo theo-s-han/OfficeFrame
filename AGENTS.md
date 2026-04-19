@@ -13,6 +13,7 @@
 4. 큰 작업이면 `docs/engineering/PLANS.md`에서 현재 다음 액션과 작업 상태를 확인한다.
 5. 화면 작업이면 `docs/product/UIUX_SPEC.md`를 확인한다.
 6. 완료 기준은 `docs/engineering/TESTING.md` 기준으로 판단한다.
+7. 새 기능/새 tool/오픈소스 선택이 들어가면 `docs/engineering/FEATURE_IMPLEMENTATION_PLAYBOOK.md`를 먼저 확인한다.
 
 ## 최우선 원칙
 
@@ -57,6 +58,7 @@
 - 관련 없는 파일은 건드리지 않는다.
 - 새 의존성은 꼭 필요할 때만 제안한다.
 - plugin 확장을 고려하되 과한 추상화는 피한다.
+- 새 기능은 오픈소스 조사 → 입력/출력 분석 → 기존 UI/동작 정렬 → preview/export 검증 순서를 `docs/engineering/FEATURE_IMPLEMENTATION_PLAYBOOK.md` 기준으로 따른다.
 - 명령/스크립트가 정의되지 않았으면 지어내지 말고 먼저 확인한다.
 - 테스트가 없으면 최소 검증 절차를 제안한다.
 

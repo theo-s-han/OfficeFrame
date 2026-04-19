@@ -164,3 +164,29 @@ Roadmap형과 진행률 추적형은 제공하지 않는다.
 ### Debug Mode
 
 - `?debug=mindmap` 또는 `localStorage.officeTool.mindmap.debug=true`일 때만 주요 preview/export 이벤트를 기록한다.
+- `?debug=mindmap` ?먮뒗 `localStorage.officeTool.mindmap.debug=true`???뚮쭔 二쇱슂 preview/export ?대깽?몃? 湲곕줉?쒕떎.
+
+## 4. 조직도 에디터
+- 상단 action bar는 `예시 데이터`, `전체 초기화`, `이미지로 내보내기`를 사용한다.
+- 본문은 좌측 입력 폼, 우측 preview 1개 구조를 유지한다.
+- 입력 필드: 조직명, 보기 방향, 이름, 직책, 상위 항목, 부서, 상태, 색상, 설명.
+- 상위 항목은 기존 항목 선택 UI로만 바꾸고, 자기 자신/하위 노드는 선택할 수 없다.
+- renderer는 `d3-org-chart` 1개만 사용한다.
+- preview surface만 PNG로 내보낸다.
+
+## 5. 플로우차트 에디터
+- 상단 action bar는 동일하게 유지한다.
+- 단계 입력과 연결 입력을 별도 섹션으로 나눈다.
+- 단계 필드: 단계명, 단계 유형, 그룹, 상태, 담당자, 색상, 설명.
+- 연결 필드: 출발 단계, 도착 단계, 조건 라벨.
+- renderer는 `@xyflow/react` 1개만 사용한다.
+- start/end 필수, self loop 금지, 존재하지 않는 연결 금지를 즉시 표시한다.
+- preview surface만 PNG로 내보낸다.
+
+## 6. 타임라인 에디터
+- 상단 action bar는 동일하게 유지한다.
+- 입력 필드: 타임라인명, 보기 방식, 항목명, 날짜, 섹션, 상태, 담당자, 색상, 설명.
+- 날짜는 항상 `YYYY-MM-DD` 형식의 date input을 사용한다.
+- 상태는 planned/active/done만 사용한다.
+- renderer는 `react-chrono` 1개만 사용한다.
+- preview surface만 PNG로 내보낸다.

@@ -14,9 +14,7 @@ export function ToolCard({ tool }: ToolCardProps) {
         <span className="tool-icon" aria-hidden="true">
           {tool.shortCode}
         </span>
-        <span className="tool-status">
-          {isActive ? "사용 가능" : "준비중"}
-        </span>
+        <span className="tool-status">{isActive ? "사용 가능" : "준비 중"}</span>
       </div>
       <h2>{tool.name}</h2>
       <p>{tool.description}</p>
@@ -26,7 +24,7 @@ export function ToolCard({ tool }: ToolCardProps) {
         </Link>
       ) : (
         <span className="button-link disabled" aria-disabled="true">
-          준비중
+          준비 중
         </span>
       )}
     </article>

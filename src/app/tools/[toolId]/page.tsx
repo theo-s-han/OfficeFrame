@@ -1,11 +1,18 @@
-import { notFound } from "next/navigation";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getActiveTools } from "@/lib/core/toolRegistry";
 
 type LegacyToolPageProps = {
   params: Promise<{
     toolId: string;
   }>;
+};
+
+const legacyRedirectMap: Record<string, string> = {
+  gantt: "/gantt",
+  mindmap: "/mindmap",
+  "org-chart": "/org-chart",
+  flowchart: "/flowchart",
+  timeline: "/timeline",
 };
 
 export function generateStaticParams() {
@@ -16,13 +23,10 @@ export function generateStaticParams() {
 
 export default async function LegacyToolPage({ params }: LegacyToolPageProps) {
   const { toolId } = await params;
+  const target = legacyRedirectMap[toolId];
 
-  if (toolId === "gantt") {
-    redirect("/gantt");
-  }
-
-  if (toolId === "mindmap") {
-    redirect("/mindmap");
+  if (target) {
+    redirect(target);
   }
 
   notFound();

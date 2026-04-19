@@ -6,6 +6,15 @@ import type { CustomNodeElementProps, RawNodeDatum } from "react-d3-tree";
 import { defaultGanttPalette } from "@/lib/gantt/theme";
 import type { GanttTask, WbsStructureType } from "@/lib/gantt/taskModel";
 import { buildWbsPreviewData } from "@/lib/gantt/wbsTree";
+import {
+  defaultWbsTreeSeparation,
+  defaultWbsTreeZoom,
+  getWbsTextLineLimit,
+  getWbsTreeNodeLayout,
+  getWbsTreeNodeSize,
+  getWbsTreePreviewTransform,
+  splitWbsPreviewLines,
+} from "@/lib/gantt/wbsTreePreviewLayout";
 
 const Tree = dynamic(() => import("react-d3-tree").then((module) => module.default), {
   ssr: false,
@@ -19,49 +28,90 @@ type WbsTreePreviewProps = {
   onSelectTask: (taskId: string) => void;
 };
 
+type WbsPreviewNodeAttributes = Record<string, string>;
+
+type WbsPreviewNode = {
+  attributes?: WbsPreviewNodeAttributes;
+  children?: WbsPreviewNode[];
+  name?: string;
+};
+
 const statusFillMap = {
   done: defaultGanttPalette.semantic.success,
   "in-progress": defaultGanttPalette.taskColors[1],
   "not-started": defaultGanttPalette.neutral.secondaryBar,
 } as const;
 
-function splitLines(value: string, maxLength: number, maxLines: number): string[] {
-  const words = value.split(/\s+/).filter(Boolean);
+function toNodeAttributes(nodeDatum: Pick<RawNodeDatum, "attributes">): WbsPreviewNodeAttributes {
+  const rawAttributes = nodeDatum.attributes ?? {};
 
-  if (words.length === 0) {
-    return [];
-  }
+  return Object.fromEntries(
+    Object.entries(rawAttributes).map(([key, value]) => [key, String(value ?? "")]),
+  );
+}
 
-  const lines: string[] = [];
-  let currentLine = "";
-
-  words.forEach((word) => {
-    const nextLine = currentLine ? `${currentLine} ${word}` : word;
-
-    if (nextLine.length <= maxLength) {
-      currentLine = nextLine;
-      return;
-    }
-
-    if (currentLine) {
-      lines.push(currentLine);
-    }
-
-    currentLine = word;
+function resolveWbsNodeTextLayout(nodeDatum: {
+  attributes?: RawNodeDatum["attributes"];
+  name?: RawNodeDatum["name"];
+}) {
+  const attributes = toNodeAttributes(nodeDatum);
+  const sourceId = attributes.sourceId ?? "";
+  const kind = attributes.kind ?? "";
+  const notes = attributes.notes ?? "";
+  const isRoot = kind === "project";
+  const name =
+    typeof nodeDatum.name === "string" ? nodeDatum.name : String(nodeDatum.name ?? "");
+  const baseLayout = getWbsTreeNodeLayout({
+    isRoot,
+    titleLineCount: 1,
   });
+  const titleLines = splitWbsPreviewLines(
+    name,
+    getWbsTextLineLimit(baseLayout.cardWidth, {
+      fontSize: isRoot ? 13.5 : 13,
+    }),
+  );
+  const ownerLines = splitWbsPreviewLines(
+    attributes.owner ? `담당: ${attributes.owner}` : "",
+    getWbsTextLineLimit(baseLayout.cardWidth, {
+      fontSize: 12,
+    }),
+  );
+  const noteLines = splitWbsPreviewLines(
+    notes,
+    getWbsTextLineLimit(baseLayout.cardWidth, {
+      fontSize: 12,
+    }),
+  );
+  const layout = getWbsTreeNodeLayout({
+    isRoot,
+    noteLineCount: noteLines.length,
+    ownerLineCount: ownerLines.length,
+    titleLineCount: titleLines.length,
+  });
+  const statusKey = (attributes.status ?? "not-started") as keyof typeof statusFillMap;
 
-  if (currentLine) {
-    lines.push(currentLine);
-  }
+  return {
+    attributes,
+    isRoot,
+    kind,
+    layout,
+    noteLines,
+    ownerLines,
+    sourceId,
+    statusFill: statusFillMap[statusKey] ?? defaultGanttPalette.neutral.secondaryBar,
+    titleLines,
+  };
+}
 
-  if (lines.length <= maxLines) {
-    return lines;
-  }
+function getMaxWbsCardHeight(node: WbsPreviewNode): number {
+  const currentHeight = resolveWbsNodeTextLayout({
+    attributes: node.attributes,
+    name: node.name,
+  }).layout.cardHeight;
+  const childHeights = (node.children ?? []).map((child) => getMaxWbsCardHeight(child));
 
-  return [
-    ...lines.slice(0, maxLines - 1),
-    `${lines[maxLines - 1].slice(0, Math.max(0, maxLength - 1))}…`,
-  ];
+  return Math.max(currentHeight, ...childHeights, 0);
 }
 
 export function WbsTreePreview({
@@ -79,6 +129,10 @@ export function WbsTreePreview({
   const treeData = useMemo(
     () => buildWbsPreviewData(tasks, projectName, structureType),
     [projectName, structureType, tasks],
+  );
+  const treeNodeSize = useMemo(
+    () => getWbsTreeNodeSize(getMaxWbsCardHeight(treeData as WbsPreviewNode)),
+    [treeData],
   );
 
   useEffect(() => {
@@ -120,22 +174,14 @@ export function WbsTreePreview({
 
   const renderCustomNodeElement = useCallback(
     ({ nodeDatum }: CustomNodeElementProps) => {
-      const attributes = nodeDatum.attributes ?? {};
-      const sourceId = String(attributes.sourceId ?? "");
-      const kind = String(attributes.kind ?? "");
-      const notes = String(attributes.notes ?? "");
-      const statusKey = String(attributes.status ?? "not-started") as keyof typeof statusFillMap;
-      const isRoot = kind === "project";
+      const { attributes, isRoot, kind, layout, noteLines, ownerLines, sourceId, statusFill, titleLines } =
+        resolveWbsNodeTextLayout(nodeDatum);
       const isSelected = Boolean(sourceId) && sourceId === selectedTaskId;
-      const cardWidth = isRoot ? 280 : 248;
-      const cardHeight = isRoot ? 112 : 122;
+      const cardWidth = layout.cardWidth;
+      const cardHeight = layout.cardHeight;
       const cardX = -cardWidth / 2;
       const cardY = -cardHeight / 2;
-      const titleLines = splitLines(nodeDatum.name, isRoot ? 24 : 22, isRoot ? 2 : 2);
-      const noteLines = splitLines(notes, 28, 2);
-      const statusFill =
-        statusFillMap[statusKey] ??
-        defaultGanttPalette.neutral.secondaryBar;
+      const clipId = `wbs-tree-node-clip-${sourceId || "root"}`;
 
       return (
         <g
@@ -145,8 +191,6 @@ export function WbsTreePreview({
               onSelectTask(sourceId);
             }
           }}
-          role={sourceId ? "button" : undefined}
-          tabIndex={sourceId ? 0 : undefined}
           onKeyDown={(event) => {
             if (!sourceId) {
               return;
@@ -157,7 +201,15 @@ export function WbsTreePreview({
               onSelectTask(sourceId);
             }
           }}
+          role={sourceId ? "button" : undefined}
+          tabIndex={sourceId ? 0 : undefined}
         >
+          <defs>
+            <clipPath id={clipId}>
+              <rect height={cardHeight} rx={8} width={cardWidth} x={cardX} y={cardY} />
+            </clipPath>
+          </defs>
+
           <rect
             className="wbs-tree-node-shadow"
             fill="rgba(15, 23, 42, 0.06)"
@@ -172,13 +224,19 @@ export function WbsTreePreview({
             fill={defaultGanttPalette.neutral.background}
             height={cardHeight}
             rx={8}
-            stroke={isSelected ? defaultGanttPalette.taskColors[0] : defaultGanttPalette.neutral.rowDivider}
+            stroke={
+              isSelected
+                ? defaultGanttPalette.taskColors[0]
+                : defaultGanttPalette.neutral.rowDivider
+            }
             strokeWidth={isSelected ? 2 : 1}
             width={cardWidth}
             x={cardX}
             y={cardY}
           />
-          <rect
+
+          <g clipPath={`url(#${clipId})`}>
+            <rect
               fill={
                 isRoot
                   ? defaultGanttPalette.taskColors[0]
@@ -186,89 +244,115 @@ export function WbsTreePreview({
                     ? defaultGanttPalette.neutral.surface
                     : defaultGanttPalette.taskColors[1]
               }
-            height={8}
-            rx={8}
-            width={cardWidth}
-            x={cardX}
-            y={cardY}
-          />
-          <text
-            className="wbs-tree-node-meta"
-            fill={defaultGanttPalette.neutral.textSecondary}
-            x={cardX + 16}
-            y={cardY + 24}
-          >
-            {attributes.code}
-          </text>
-          <text
-            className="wbs-tree-node-title"
-            fill={defaultGanttPalette.neutral.textPrimary}
-            x={cardX + 16}
-            y={cardY + 46}
-          >
-            {titleLines.map((line, index) => (
-              <tspan dy={index === 0 ? 0 : 18} key={`${line}-${index}`} x={cardX + 16}>
-                {line}
-              </tspan>
-            ))}
-          </text>
-          <text
-            className="wbs-tree-node-kind"
-            fill={defaultGanttPalette.neutral.textSecondary}
-            x={cardX + 16}
-            y={cardY + 84}
-          >
-            {attributes.kindLabel}
-          </text>
-          {!isRoot ? (
-            <>
-              {attributes.owner ? (
-                <text
-                  className="wbs-tree-node-owner"
-                  fill={defaultGanttPalette.neutral.textSecondary}
-                  x={cardX + 16}
-                  y={cardY + 102}
+              height={layout.barHeight}
+              rx={8}
+              width={cardWidth}
+              x={cardX}
+              y={cardY}
+            />
+
+            <text
+              className="wbs-tree-node-meta"
+              dominantBaseline="hanging"
+              fill={defaultGanttPalette.neutral.textSecondary}
+              x={cardX + layout.contentX}
+              y={cardY + layout.codeY}
+            >
+              {attributes.code}
+            </text>
+
+            <text
+              className="wbs-tree-node-title"
+              dominantBaseline="hanging"
+              fill={defaultGanttPalette.neutral.textPrimary}
+              x={cardX + layout.contentX}
+              y={cardY + layout.titleY}
+            >
+              {titleLines.map((line, index) => (
+                <tspan
+                  dy={index === 0 ? 0 : layout.titleLineHeight}
+                  key={`${line}-${index}`}
+                  x={cardX + layout.contentX}
                 >
-                  담당: {attributes.owner}
-                </text>
-              ) : null}
-              <rect
-                className="wbs-tree-status-badge"
-                fill={statusFill}
-                height={20}
-                rx={6}
-                width={74}
-                x={cardX + cardWidth - 90}
-                y={cardY + cardHeight - 34}
-              />
-              <text
-                className="wbs-tree-status-text"
-                fill={defaultGanttPalette.neutral.background}
-                x={cardX + cardWidth - 53}
-                y={cardY + cardHeight - 20}
-              >
-                {attributes.statusLabel}
-              </text>
-              {noteLines.length > 0 ? (
+                  {line}
+                </tspan>
+              ))}
+            </text>
+
+            <text
+              className="wbs-tree-node-kind"
+              dominantBaseline="hanging"
+              fill={defaultGanttPalette.neutral.textSecondary}
+              x={cardX + layout.contentX}
+              y={cardY + layout.kindY}
+            >
+              {attributes.kindLabel}
+            </text>
+
+            {!isRoot ? (
+              <>
+                {ownerLines.length > 0 ? (
+                  <text
+                    className="wbs-tree-node-owner"
+                    dominantBaseline="hanging"
+                    fill={defaultGanttPalette.neutral.textSecondary}
+                    x={cardX + layout.contentX}
+                    y={cardY + (layout.ownerY ?? layout.kindY)}
+                  >
+                    {ownerLines.map((line, index) => (
+                      <tspan
+                        dy={index === 0 ? 0 : layout.ownerLineHeight}
+                        key={`${line}-${index}`}
+                        x={cardX + layout.contentX}
+                      >
+                        {line}
+                      </tspan>
+                    ))}
+                  </text>
+                ) : null}
+
+                {noteLines.length > 0 ? (
+                  <text
+                    className="wbs-tree-node-notes"
+                    dominantBaseline="hanging"
+                    fill={defaultGanttPalette.neutral.textSecondary}
+                    x={cardX + layout.contentX}
+                    y={cardY + (layout.noteY ?? layout.kindY)}
+                  >
+                    {noteLines.map((line, index) => (
+                      <tspan
+                        dy={index === 0 ? 0 : layout.noteLineHeight}
+                        key={`${line}-${index}`}
+                        x={cardX + layout.contentX}
+                      >
+                        {line}
+                      </tspan>
+                    ))}
+                  </text>
+                ) : null}
+
+                <rect
+                  className="wbs-tree-status-badge"
+                  fill={statusFill}
+                  height={layout.badgeHeight}
+                  rx={6}
+                  width={layout.badgeWidth}
+                  x={cardX + layout.badgeX}
+                  y={cardY + layout.badgeY}
+                />
                 <text
-                  className="wbs-tree-node-notes"
-                  fill={defaultGanttPalette.neutral.textSecondary}
-                  x={cardX + 16}
-                  y={cardY + cardHeight - 32}
+                  className="wbs-tree-status-text"
+                  dominantBaseline="middle"
+                  fill={defaultGanttPalette.neutral.background}
+                  textAnchor="middle"
+                  x={cardX + layout.statusTextX}
+                  y={cardY + layout.statusTextY}
                 >
-                  {noteLines.map((line, index) => (
-                    <tspan
-                      dy={index === 0 ? 0 : 14}
-                      key={`${line}-${index}`}
-                      x={cardX + 16}
-                    >
-                      {line}
-                    </tspan>
-                  ))}
+                  {attributes.statusLabel}
                 </text>
-              ) : null}
-            </>
-          ) : null}
+              </>
+            ) : null}
+          </g>
         </g>
       );
     },
@@ -292,19 +376,19 @@ export function WbsTreePreview({
       <div className="wbs-tree-surface" ref={surfaceRef}>
         <div className="wbs-tree-canvas">
           <Tree
-            data={treeData as RawNodeDatum}
             collapsible={false}
-            depthFactor={180}
+            data={treeData as RawNodeDatum}
             draggable
             enableLegacyTransitions={false}
+            nodeSize={treeNodeSize}
             orientation="vertical"
             pathClassFunc={() => "wbs-tree-link"}
             pathFunc="step"
             renderCustomNodeElement={renderCustomNodeElement}
             rootNodeClassName="wbs-tree-root"
-            separation={{ nonSiblings: 1.45, siblings: 1.1 }}
-            translate={{ x: surfaceSize.width / 2, y: 84 }}
-            zoom={0.9}
+            separation={defaultWbsTreeSeparation}
+            translate={getWbsTreePreviewTransform(surfaceSize.width)}
+            zoom={defaultWbsTreeZoom}
             zoomable
           />
         </div>

@@ -18,7 +18,7 @@
 - Dropped: ?섏? ?딄린濡???
 ## ?꾩옱 ?ㅼ쓬 ?≪뀡
 
-- PLAN-006 plugin 구조 최소 정리는 사용자 요청 시 시작 대기로 유지한다.
+- 마인드맵 preview 직접 편집 개선은 완료했고, 다음 요청에 맞춰 구조형 도구 polish를 이어간다.
 
 ## ?묒뾽 ??
 | ?쒖꽌 | ID       | ?묒뾽                             | ?곹깭     | 紐⑹쟻                                                                                                                              | ?꾨즺 湲곗?                                                                                                                                                                                            | ?섏〈??                   |
@@ -42,6 +42,11 @@
 | 17   | PLAN-017 | milestone v1 ?ъ꽕怨?             | Done        | milestone 湲곕뒫???낅젰-?⑥씪 preview-PNG ?ㅼ슫濡쒕뱶 ?먮쫫?쇰줈 ?ㅼ떆 ?ㅺ퀎?섍퀬, 媛쒕컻??以묒떖 ?낅젰怨??댁쨷 renderer 援ъ“瑜??쒓굅?쒕떎.        | milestone ?붾㈃?먯꽌 Mermaid Timeline preview 1媛쒕쭔 蹂댁씠怨? id/dependsOn???④꺼吏硫? "?댁쟾 ?④퀎" ?좏깮 UI/寃利?PNG ?ㅼ슫濡쒕뱶/?섑뵆 ?곗씠?곌? 臾몄꽌???먮쫫??留욊쾶 ?숈옉?쒕떎.                                   | PLAN-015, PLAN-016        |
 | 18   | PLAN-018 | 留덉씤?쒕㏊ ?꾧뎄 異붽?               | Done        | 臾대즺 ?ㅽ뵂?뚯뒪 湲곕컲??留덉씤?쒕㏊ editor shell??異붽??섍퀬, ?낅젰/preview/PNG export瑜?臾몄꽌???먮쫫?쇰줈 臾띕뒗??                          | ?덇낵 registry??留덉씤?쒕㏊???쒖꽦 ?꾧뎄濡??몄텧?섍퀬, `/mindmap`?먯꽌 ?ㅽ뵂?뚯뒪 renderer 湲곕컲 preview, 怨꾩링 ?낅젰, ?됱긽 ?좏깮, PNG export, ?뚯뒪??臾몄꽌媛 ?④퍡 ?숈옉?쒕떎.                                           | PLAN-006                  |
 | 19   | PLAN-019 | WBS Tree ?ъ꽕怨?                 | Done | WBS瑜??쇱젙?뺤씠 ?꾨땲??怨꾩링???묒뾽 遺꾪빐 援ъ“濡??ㅼ떆 ?ㅺ퀎?섍퀬, ?ъ슜???낅젰怨?臾몄꽌??preview瑜??⑥씪 寃곌낵臾??먮쫫?쇰줈 ?뺣━?쒕떎.        | WBS ?붾㈃?먯꽌 react-d3-tree 湲곕컲 preview 1媛쒕쭔 蹂댁씠怨? ?꾨줈?앺듃紐?援ъ“ ?좏삎/??ぉ紐??곸쐞 ??ぉ/?대떦???곹깭/?ㅻ챸留??낅젰?섎ŉ, WBS 肄붾뱶 ?먮룞 ?앹꽦怨?PNG export, validation, ?섑뵆 ?곗씠?? 臾몄꽌媛 ?④퍡 留욎떠吏꾨떎. | PLAN-013, PLAN-016        |
+| 20   | PLAN-020 | 구조형 도구 3종 조사/명세 정리      | Done     | 조직도, 플로우차트, 타임라인의 무료 오픈소스 후보와 사용 예시를 조사하고 공통 UX 규칙, 입력/출력 스키마, preview/export 기준을 문서로 잠근다. | `DIAGRAM_TOOLKIT_SPEC.md`, 기능별 spec, `PLANS.md`가 갱신되고 다음 구현 순서가 명확해진다.                                                                                                                     | PLAN-019                  |
+| 21   | PLAN-021 | 조직도 도구 추가                   | Done | 조직도 전용 editor/preview/export 흐름을 추가하고 `d3-org-chart` 기반 단일 preview를 붙인다.                                                                 | `/org-chart` 진입, 카드형 조직도 preview 1개, 상위 항목 선택 UI, validation, PNG export, sample data, debug mode가 동작한다.                                                                                   | PLAN-020                  |
+| 22   | PLAN-022 | 플로우차트 도구 추가               | Done    | 플로우차트 editor/preview/export 흐름을 추가하고 `@xyflow/react` 기반 단일 preview를 붙인다.                                                                  | `/flowchart` 진입, 단계/분기 입력 UI, shape 구분, 연결 validation, sample data, PNG export, debug mode가 동작한다.                                                                                            | PLAN-020                  |
+| 23   | PLAN-023 | 타임라인 도구 추가                 | Done    | 타임라인 editor/preview/export 흐름을 추가하고 `react-chrono` 기반 단일 preview를 붙인다.                                                                     | `/timeline` 진입, 날짜 기반 event 입력 UI, section grouping, sample data, PNG export, debug mode가 동작한다.                                                                                                   | PLAN-020                  |
+| 24   | PLAN-024 | 마인드맵 preview 직접 편집 개선    | Done        | preview에서 노드를 클릭해 선택하고, 선택된 노드에 즉시 보이는 추가/삭제 액션과 실행 취소 흐름을 붙여 편집 마찰을 줄인다.                                     | `/mindmap` preview에서 선택 노드 근처에 `+/-` 액션이 보이고, `+`는 빈 하위 노드를 만들고 `-`는 현재 노드와 하위 노드를 함께 제거하며, `실행 취소`로 직전 상태를 되돌릴 수 있다.                                  | PLAN-018                  |
 
 ## ?댁쁺 洹쒖튃
 

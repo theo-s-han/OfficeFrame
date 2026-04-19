@@ -59,18 +59,12 @@ function getStatusLabel(status?: string): string {
   return "시작 전";
 }
 
-function trimPreviewText(value?: string, maxLength = 44): string {
+function normalizePreviewText(value?: string): string {
   if (!value) {
     return "";
   }
 
-  const normalized = value.replace(/\s+/g, " ").trim();
-
-  if (normalized.length <= maxLength) {
-    return normalized;
-  }
-
-  return `${normalized.slice(0, maxLength - 1)}…`;
+  return value.replace(/\s+/g, " ").trim();
 }
 
 function buildDraftTree(tasks: GanttTask[]) {
@@ -136,9 +130,9 @@ export function buildWbsTreeNodes(
       depth,
       kind,
       name: node.task.name,
-      notes: trimPreviewText(node.task.notes, 64),
+      notes: normalizePreviewText(node.task.notes),
       order: node.order,
-      owner: trimPreviewText(node.task.owner, 24),
+      owner: normalizePreviewText(node.task.owner),
       parentId: node.task.parentId || null,
       status: node.task.status || "not-started",
     };
