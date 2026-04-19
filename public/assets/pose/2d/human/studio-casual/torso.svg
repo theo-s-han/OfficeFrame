@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="170" height="214" viewBox="0 0 170 214" fill="none">
+  <defs>
+    <linearGradient id="casual-hoodie" x1="85" y1="10" x2="85" y2="214" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="__CLOTH_LIGHT__"/>
+      <stop offset=".42" stop-color="__CLOTH__"/>
+      <stop offset="1" stop-color="__CLOTH_SHADE__"/>
+    </linearGradient>
+  </defs>
+  <path d="M44.2 20.2C52 12.2 65.6 8 85 8C104.4 8 118 12.2 125.8 20.2C132.5 27.1 135.8 38.3 135.8 53.9V136.6C135.8 153.7 131.4 168.2 122.6 180C113.8 191.7 101.3 199.4 85 199.4C68.7 199.4 56.2 191.7 47.4 180C38.6 168.2 34.2 153.7 34.2 136.6V53.9C34.2 38.3 37.5 27.1 44.2 20.2Z" fill="url(#casual-hoodie)"/>
+  <path d="M52.6 19.4C59.6 13.3 70.4 10.4 85 10.4C99.6 10.4 110.4 13.3 117.4 19.4L114.7 33.8C111.7 49.5 98 61 82 61H88C72 61 58.3 49.5 55.3 33.8L52.6 19.4Z" fill="__CLOTH_DEEP__" opacity=".18"/>
+  <path d="M61.4 30.6L74.9 43.2C77.5 45.6 81 46.9 84.6 46.9H85.4C89 46.9 92.5 45.6 95.1 43.2L108.6 30.6C111.5 37.9 113.1 45.3 113.1 52.9C113.1 68.5 100.5 81.1 84.9 81.1H85.1C69.5 81.1 56.9 68.5 56.9 52.9C56.9 45.3 58.5 37.9 61.4 30.6Z" fill="__CLOTH_LIGHT__" opacity=".42"/>
+  <path d="M64 100.7H106C110.4 100.7 114 104.3 114 108.7V124.1C114 127.5 111.3 130.2 107.9 130.2H62.1C58.7 130.2 56 127.5 56 124.1V108.7C56 104.3 59.6 100.7 64 100.7Z" fill="__CLOTH_DEEP__" opacity=".2"/>
+  <path d="M74.7 36.4L71.8 70.8" stroke="#F8FAFC" stroke-width="3.4" stroke-linecap="round" opacity=".84"/>
+  <path d="M95.3 36.4L98.2 70.8" stroke="#F8FAFC" stroke-width="3.4" stroke-linecap="round" opacity=".84"/>
+  <circle cx="72.5" cy="73.8" r="3.7" fill="__ACCENT__"/>
+  <circle cx="97.5" cy="73.8" r="3.7" fill="__ACCENT__"/>
+</svg>

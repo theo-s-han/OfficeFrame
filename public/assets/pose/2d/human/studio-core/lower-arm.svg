@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="46" height="126" viewBox="0 0 46 126" fill="none">
+  <defs>
+    <linearGradient id="skin-a" x1="23" y1="0" x2="23" y2="126" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="__SKIN_LIGHT__"/>
+      <stop offset=".5" stop-color="__SKIN__"/>
+      <stop offset="1" stop-color="__SKIN_SHADE__"/>
+    </linearGradient>
+  </defs>
+  <path d="M23 7C31 7 36.8 13.3 36.8 21.8V96.8C36.8 109.6 30.8 119 23 119C15.2 119 9.2 109.6 9.2 96.8V21.8C9.2 13.3 15 7 23 7Z" fill="url(#skin-a)"/>
+  <path d="M18.7 10.4C14.4 13.8 11.5 19.6 11.5 26.4V98C11.5 104.5 13.8 110.4 17.5 114.4C12.4 111 9.2 104.2 9.2 96.8V21.8C9.2 13.8 15.2 7.5 23 7.5C25.7 7.5 28.3 8.3 30.5 9.8C29.1 9.3 27.6 9 26.1 9C23.4 9 20.9 9.5 18.7 10.4Z" fill="__SKIN_LIGHT__" opacity=".34"/>
+  <path d="M31.2 10.8C34.7 14.4 36.8 19.7 36.8 25.6V96.8C36.8 104.8 34.4 111.9 30.6 116C32.9 112 34.2 107 34.2 101.5V23.8C34.2 18.8 33.1 14.1 31.2 10.8Z" fill="__SKIN_SHADE__" opacity=".24"/>
+  <ellipse cx="23" cy="19.5" rx="11.8" ry="8" fill="__SKIN_LIGHT__" opacity=".55"/>
+</svg>

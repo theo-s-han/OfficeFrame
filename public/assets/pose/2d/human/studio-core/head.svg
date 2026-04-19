@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="116" height="122" viewBox="0 0 116 122" fill="none">
+  <path d="M58 11C76.9 11 91 25.6 91 46.2C91 62.7 81.8 76.3 69.3 82.7C65.7 84.6 61.9 85.5 58 85.5C54.1 85.5 50.3 84.6 46.7 82.7C34.2 76.3 25 62.7 25 46.2C25 25.6 39.1 11 58 11Z" fill="__SKIN__"/>
+  <path d="M58 16.5C72.5 16.5 83.2 27.4 83.2 42.1C83.2 48.4 81.2 54.3 77.7 59.3C71.8 67.7 63.2 72 58 72C52.8 72 44.2 67.7 38.3 59.3C34.8 54.3 32.8 48.4 32.8 42.1C32.8 27.4 43.5 16.5 58 16.5Z" fill="__SKIN_LIGHT__" opacity=".52"/>
+  <ellipse cx="44" cy="47" rx="4.1" ry="4.7" fill="#233047"/>
+  <ellipse cx="72" cy="47" rx="4.1" ry="4.7" fill="#233047"/>
+  <path d="M52.3 64.1C54.9 66.9 57 67.9 59.4 67.9C61.9 67.9 63.9 66.9 66.5 64.1" stroke="#8E5564" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M58 50.2V57.8" stroke="__SKIN_SHADE__" stroke-width="2.8" stroke-linecap="round" opacity=".75"/>
+  <ellipse cx="37.1" cy="52.8" rx="4.5" ry="6.8" fill="__SKIN_LIGHT__" opacity=".45"/>
+  <ellipse cx="78.9" cy="52.8" rx="4.5" ry="6.8" fill="__SKIN_LIGHT__" opacity=".45"/>
+  <path d="M43.2 42.4C45.3 40.7 47.3 40 49.7 40" stroke="#26354D" stroke-width="2.7" stroke-linecap="round" opacity=".55"/>
+  <path d="M66.3 40C68.7 40 70.7 40.7 72.8 42.4" stroke="#26354D" stroke-width="2.7" stroke-linecap="round" opacity=".55"/>
+</svg>

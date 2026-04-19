@@ -1,7 +1,9 @@
 import { ToolCard } from "@/components/home/ToolCard";
-import { toolRegistry } from "@/lib/core/toolRegistry";
+import { getPublicTools } from "@/lib/core/toolRegistry";
 
 export default function HomePage() {
+  const tools = getPublicTools();
+
   return (
     <main className="home-page">
       <section className="home-hero" aria-labelledby="home-title">
@@ -14,7 +16,7 @@ export default function HomePage() {
       </section>
 
       <section className="tool-grid" aria-label="도구 목록">
-        {toolRegistry.map((tool) => (
+        {tools.map((tool) => (
           <ToolCard key={tool.id} tool={tool} />
         ))}
       </section>

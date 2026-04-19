@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="56" height="132" viewBox="0 0 56 132" fill="none">
+  <defs>
+    <linearGradient id="cloth-a" x1="28" y1="0" x2="28" y2="132" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="__CLOTH_LIGHT__"/>
+      <stop offset=".48" stop-color="__CLOTH__"/>
+      <stop offset="1" stop-color="__CLOTH_SHADE__"/>
+    </linearGradient>
+  </defs>
+  <path d="M28 8C37.3 8 44 15 44 24V101C44 113.4 36.8 123 28 123C19.2 123 12 113.4 12 101V24C12 15 18.7 8 28 8Z" fill="url(#cloth-a)"/>
+  <path d="M37.8 17.8C34.8 13.5 31.4 11.4 27.6 11.4C22.1 11.4 17.8 16.5 17.8 24.5V101.5C17.8 106.6 18.9 111.4 21.2 115.5C16 111.9 12 105 12 97.3V24.2C12 14.8 18.8 8 28 8C32.6 8 36.4 9.9 39.2 13.2L37.8 17.8Z" fill="__CLOTH_LIGHT__" opacity=".38"/>
+  <path d="M32.8 10.7C39 14.1 43 21.2 43 29.3V103.5C43 111.7 38.9 118.8 32.7 122.1C36.4 118.1 38.7 112.3 38.7 105.8V27.2C38.7 20.6 36.5 14.8 32.8 10.7Z" fill="__CLOTH_DEEP__" opacity=".3"/>
+  <ellipse cx="28" cy="17" rx="13" ry="9" fill="__CLOTH_LIGHT__" opacity=".62"/>
+</svg>

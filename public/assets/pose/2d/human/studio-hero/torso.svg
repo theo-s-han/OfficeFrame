@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="170" height="214" viewBox="0 0 170 214" fill="none">
+  <defs>
+    <linearGradient id="hero-jacket" x1="85" y1="0" x2="85" y2="214" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="__CLOTH_LIGHT__"/>
+      <stop offset=".4" stop-color="__CLOTH__"/>
+      <stop offset="1" stop-color="__CLOTH_DEEP__"/>
+    </linearGradient>
+  </defs>
+  <path d="M40.9 18.1C49.1 10.6 63.8 6.8 85 6.8C106.2 6.8 120.9 10.6 129.1 18.1C136.4 24.8 140 35.8 140 51V138.1C140 155.7 135.1 170.5 125.2 182.5C115.3 194.5 101.9 202.2 85 202.2C68.1 202.2 54.7 194.5 44.8 182.5C34.9 170.5 30 155.7 30 138.1V51C30 35.8 33.6 24.8 40.9 18.1Z" fill="url(#hero-jacket)"/>
+  <path d="M55.2 18.9L74.8 33.5C77.8 35.7 81.5 36.8 85.2 36.8C88.9 36.8 92.6 35.7 95.6 33.5L115.2 18.9L108.8 63.8C105.7 85.4 87.2 101.4 65.4 101.4H104.6C82.8 101.4 64.3 85.4 61.2 63.8L55.2 18.9Z" fill="__ACCENT__" opacity=".94"/>
+  <path d="M55.8 24.8L72 39.5C75.4 42.6 79.8 44.3 84.4 44.3H85.6C90.2 44.3 94.6 42.6 98 39.5L114.2 24.8L111.6 42.6C108.9 61.4 92.8 75.3 73.8 75.3H96.2C77.2 75.3 61.1 61.4 58.4 42.6L55.8 24.8Z" fill="__ACCENT_LIGHT__" opacity=".52"/>
+  <rect x="55" y="109" width="60" height="15" rx="7.5" fill="__ACCENT__"/>
+  <path d="M52.9 171.2C61 181.1 71.3 186 85 186C98.7 186 109 181.1 117.1 171.2" stroke="__ACCENT_LIGHT__" stroke-width="6" stroke-linecap="round" opacity=".54"/>
+</svg>

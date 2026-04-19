@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import HomePage from "./page";
 
 describe("HomePage", () => {
-  it("shows all active visualization tools", () => {
+  it("shows only public visualization tools", () => {
     render(<HomePage />);
 
     expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
@@ -21,5 +21,7 @@ describe("HomePage", () => {
         "/timeline",
       ]),
     );
+
+    expect(hrefs).not.toContain("/pose");
   });
 });

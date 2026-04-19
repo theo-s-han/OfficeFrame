@@ -18,7 +18,7 @@
 - Dropped: ?섏? ?딄린濡???
 ## ?꾩옱 ?ㅼ쓬 ?≪뀡
 
-- 마인드맵 preview 직접 편집 개선은 완료했고, 다음 요청에 맞춰 구조형 도구 polish를 이어간다.
+- 포즈 메이커 2D 사람형 기본 렌더러 품질을 만화형 paper-doll 수준으로 끌어올리고, `/pose` 기본 표시를 고품질 캐릭터로 교체한다.
 
 ## ?묒뾽 ??
 | ?쒖꽌 | ID       | ?묒뾽                             | ?곹깭     | 紐⑹쟻                                                                                                                              | ?꾨즺 湲곗?                                                                                                                                                                                            | ?섏〈??                   |
@@ -47,6 +47,12 @@
 | 22   | PLAN-022 | 플로우차트 도구 추가               | Done    | 플로우차트 editor/preview/export 흐름을 추가하고 `@xyflow/react` 기반 단일 preview를 붙인다.                                                                  | `/flowchart` 진입, 단계/분기 입력 UI, shape 구분, 연결 validation, sample data, PNG export, debug mode가 동작한다.                                                                                            | PLAN-020                  |
 | 23   | PLAN-023 | 타임라인 도구 추가                 | Done    | 타임라인 editor/preview/export 흐름을 추가하고 `react-chrono` 기반 단일 preview를 붙인다.                                                                     | `/timeline` 진입, 날짜 기반 event 입력 UI, section grouping, sample data, PNG export, debug mode가 동작한다.                                                                                                   | PLAN-020                  |
 | 24   | PLAN-024 | 마인드맵 preview 직접 편집 개선    | Done        | preview에서 노드를 클릭해 선택하고, 선택된 노드에 즉시 보이는 추가/삭제 액션과 실행 취소 흐름을 붙여 편집 마찰을 줄인다.                                     | `/mindmap` preview에서 선택 노드 근처에 `+/-` 액션이 보이고, `+`는 빈 하위 노드를 만들고 `-`는 현재 노드와 하위 노드를 함께 제거하며, `실행 취소`로 직전 상태를 되돌릴 수 있다.                                  | PLAN-018                  |
+| 25   | PLAN-025 | 캐릭터 포즈 메이커 추가            | Done        | 홈 허브와 신규 `/pose` 라우트에 2D/3D 포즈 편집 도구를 추가하고, 프리셋/미러/JSON/PNG export 흐름을 기존 editor shell 패턴에 맞춰 붙인다.                  | 홈 허브에 포즈 메이커 카드가 보이고 `/pose`에서 2D Konva 편집, 3D R3F 편집, preset/reset/mirror, JSON copy/import, PNG export가 동작하며 기존 간트 기능과 lint/typecheck/build가 유지된다.                      | PLAN-020, PLAN-024        |
+| 26   | PLAN-026 | 포즈 메이커 3D 사람형 asset 지원   | Done | `/pose`의 3D preview를 VRM/GLB/GLTF 사람형 model 우선 구조로 확장하고, local asset 부재 시 empty state와 primitive fallback을 함께 제공한다.              | `public/assets/pose/models/human` 아래 asset이 있으면 사람형 skinned humanoid model이 bone rotation 기준으로 포즈를 취하고, asset이 없으면 안내 메시지와 primitive fallback이 보이며, PNG/JSON/test/build가 유지된다. | PLAN-025                  |
+| 27   | PLAN-027 | 포즈 메이커 2D 사람형 캐릭터 지원  | Done | `/pose`의 2D preview를 stick figure 중심 구조에서 사람형 캐릭터 렌더러로 확장하고, built-in cartoon과 segmented SVG/PNG asset 선택을 함께 제공한다.        | 2D human preview가 기본적으로 사람 캐릭터로 보이고, joint drag/IK/preset/mirror/export/JSON 흐름이 유지되며, asset이 없거나 깨져도 built-in fallback과 warning UI가 보이고 lint/typecheck/test/build가 유지된다. | PLAN-025, PLAN-026        |
+| 28   | PLAN-028 | 포즈 메이커 2D 캐릭터 팩 보강      | Done | 무료 사람형 캐릭터 소스를 조사하고 실제 온보딩 가능한 범위를 문서화한 뒤, `/pose` 2D human renderer에서 3종 이상 캐릭터를 선택하고 더 사람다운 파츠 표현으로 포즈를 편집할 수 있게 보강한다. | 공식 소스와 라이선스가 문서화되고, same-origin 기준 참고 asset 또는 manifest 규칙이 정리되며, `/pose` 2D human 모드에서 최소 3종 이상의 캐릭터 모형을 선택할 수 있고, 관절 굽힘이 기존보다 자연스럽게 보이며, lint/typecheck/test/build가 유지된다. | PLAN-027                  |
+| 29   | PLAN-029 | 포즈 메이커 Open Peeps rig 팩 온보딩 | Done | Open Peeps를 우선 소스로 삼아 첫 same-origin segmented rig pack을 만들고, `/pose` 2D human selector에서 실제 외부 스타일 pack을 선택할 수 있게 연결한다. | Open Peeps 기반 first segmented rig asset이 `public/assets/pose/2d/human/...`에 추가되고, manifest/rig 정의가 갱신되며, `/pose` 2D human 모드에서 built-in 외에 실제 segmented asset 1종 이상을 선택해 포즈 편집/PNG export/JSON 흐름이 유지되고, lint/typecheck/test/build가 통과한다. | PLAN-028                  |
+| 30   | PLAN-030 | 포즈 메이커 2D 사람형 품질 상향      | In Progress | `/pose` 2D human 기본 캐릭터를 디버그용 마네킹 수준에서 벗어나, 문서/콘티에 바로 쓸 수 있는 만화형 paper-doll 렌더러와 3종 이상 스타일 선택 구조로 끌어올린다. | 기본 asset이 팔/다리/몸통/머리 연결이 자연스러운 사람형 캐릭터로 보이고, 최소 3종 이상 스타일이 같은 관절 편집 UX를 유지하며, skeleton은 overlay 옵션으로만 남고, lint/typecheck/test/build가 통과한다. | PLAN-027, PLAN-029        |
 
 ## ?댁쁺 洹쒖튃
 

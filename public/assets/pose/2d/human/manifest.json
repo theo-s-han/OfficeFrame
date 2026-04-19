@@ -1,0 +1,10 @@
+{
+  "assets": [
+    {
+      "rig": "/assets/pose/2d/human/basic-cartoon/rig.json"
+    },
+    {
+      "rig": "/assets/pose/2d/human/open-peeps-lite/rig.json"
+    }
+  ]
+}

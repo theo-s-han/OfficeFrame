@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { getActiveTools } from "@/lib/core/toolRegistry";
+import { getPublicTools } from "@/lib/core/toolRegistry";
 
 type LegacyToolPageProps = {
   params: Promise<{
@@ -16,7 +16,7 @@ const legacyRedirectMap: Record<string, string> = {
 };
 
 export function generateStaticParams() {
-  return getActiveTools().map((tool) => ({
+  return getPublicTools().map((tool) => ({
     toolId: tool.id,
   }));
 }

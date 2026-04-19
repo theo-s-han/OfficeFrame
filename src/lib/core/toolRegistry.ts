@@ -1,4 +1,5 @@
 export type ToolStatus = "active" | "placeholder";
+export type ToolVisibility = "public" | "internal";
 
 export type ToolDefinition = {
   id: string;
@@ -7,6 +8,7 @@ export type ToolDefinition = {
   href: string;
   shortCode: string;
   status: ToolStatus;
+  visibility: ToolVisibility;
   order: number;
 };
 
@@ -18,6 +20,7 @@ export const toolRegistry = [
     href: "/gantt",
     shortCode: "GT",
     status: "active",
+    visibility: "public",
     order: 1,
   },
   {
@@ -27,6 +30,7 @@ export const toolRegistry = [
     href: "/mindmap",
     shortCode: "MM",
     status: "active",
+    visibility: "public",
     order: 2,
   },
   {
@@ -36,6 +40,7 @@ export const toolRegistry = [
     href: "/org-chart",
     shortCode: "OC",
     status: "active",
+    visibility: "public",
     order: 3,
   },
   {
@@ -45,6 +50,7 @@ export const toolRegistry = [
     href: "/flowchart",
     shortCode: "FC",
     status: "active",
+    visibility: "public",
     order: 4,
   },
   {
@@ -54,7 +60,18 @@ export const toolRegistry = [
     href: "/timeline",
     shortCode: "TL",
     status: "active",
+    visibility: "public",
     order: 5,
+  },
+  {
+    id: "pose",
+    name: "캐릭터 포즈 메이커",
+    description: "2D와 3D 마네킹으로 인물 포즈를 빠르게 만들고 PNG로 내보냅니다.",
+    href: "/pose",
+    shortCode: "PS",
+    status: "active",
+    visibility: "internal",
+    order: 6,
   },
 ] satisfies ToolDefinition[];
 
@@ -62,4 +79,11 @@ export function getActiveTools() {
   return toolRegistry
     .filter((tool) => tool.status === "active")
     .sort((left, right) => left.order - right.order);
+}
+
+export function getPublicTools() {
+  return getActiveTools()
+    .filter(
+      (tool) => tool.visibility === "public",
+    );
 }

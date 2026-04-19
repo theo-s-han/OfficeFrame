@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import HomePage from "./page";
 
 describe("execution skeleton smoke", () => {
-  it("renders the home hub with all active tools", () => {
+  it("renders the home hub with only public tools", () => {
     render(<HomePage />);
 
     expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
@@ -20,5 +20,7 @@ describe("execution skeleton smoke", () => {
         "/timeline",
       ]),
     );
+
+    expect(hrefs).not.toContain("/pose");
   });
 });

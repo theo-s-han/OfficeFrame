@@ -1,4 +1,8 @@
-export { getActiveTools, toolRegistry } from "@/lib/core/toolRegistry";
+export {
+  getActiveTools,
+  getPublicTools,
+  toolRegistry,
+} from "@/lib/core/toolRegistry";
 import { toolRegistry } from "@/lib/core/toolRegistry";
 
 export function getToolById(toolId: string) {
