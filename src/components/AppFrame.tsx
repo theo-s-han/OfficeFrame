@@ -1,5 +1,5 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
+import { AppHeader } from "@/components/layout/AppHeader";
 
 type AppFrameProps = {
   children: ReactNode;
@@ -8,13 +8,7 @@ type AppFrameProps = {
 export function AppFrame({ children }: AppFrameProps) {
   return (
     <div className="app-frame">
-      <header className="site-header">
-        <Link href="/" className="brand-link" aria-label="홈으로 이동">
-          <span className="brand-mark">OT</span>
-          <span>Office Tool</span>
-        </Link>
-        <span className="phase-label">Execution Skeleton</span>
-      </header>
+      <AppHeader />
       {children}
     </div>
   );

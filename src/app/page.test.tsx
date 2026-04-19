@@ -3,25 +3,31 @@ import { describe, expect, it } from "vitest";
 import HomePage from "./page";
 
 describe("HomePage", () => {
-  it("shows only public visualization tools", () => {
+  it("shows only representative featured tools on the home hub", () => {
     render(<HomePage />);
 
-    expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
-    expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(5);
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: "업무 데이터를 문서형 시각화로 바로 정리하세요",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("DataViz Studio").length).toBeGreaterThan(0);
 
-    const startLinks = screen.getAllByRole("link");
-    const hrefs = startLinks.map((link) => link.getAttribute("href"));
+    screen
+      .getAllByRole("link", { name: "간트 차트 시작하기" })
+      .forEach((link) => expect(link).toHaveAttribute("href", "/gantt"));
+    screen
+      .getAllByRole("link", { name: "마인드맵 열기" })
+      .forEach((link) => expect(link).toHaveAttribute("href", "/mindmap"));
+    screen
+      .getAllByRole("link", { name: "조직도 열기" })
+      .forEach((link) => expect(link).toHaveAttribute("href", "/org-chart"));
+    screen
+      .getAllByRole("link", { name: "플로우차트 열기" })
+      .forEach((link) => expect(link).toHaveAttribute("href", "/flowchart"));
 
-    expect(hrefs).toEqual(
-      expect.arrayContaining([
-        "/gantt",
-        "/mindmap",
-        "/org-chart",
-        "/flowchart",
-        "/timeline",
-      ]),
-    );
-
-    expect(hrefs).not.toContain("/pose");
+    expect(screen.queryByText("타임라인")).not.toBeInTheDocument();
+    expect(screen.queryByText("캐릭터 포즈 메이커")).not.toBeInTheDocument();
   });
 });

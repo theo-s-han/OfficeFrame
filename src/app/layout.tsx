@@ -3,8 +3,8 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Office Tool",
-  description: "오피스 문서용 시각화 웹앱 실행 골격",
+  title: "DataViz Studio",
+  description: "업무 데이터를 문서형 시각화 이미지로 정리하는 웹앱",
 };
 
 export default function RootLayout({

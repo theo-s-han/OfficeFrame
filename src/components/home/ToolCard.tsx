@@ -1,32 +1,52 @@
+import Image from "next/image";
 import Link from "next/link";
-import type { ToolDefinition } from "@/lib/core/toolRegistry";
+import type { HomeFeaturedTool } from "@/lib/home/featuredTools";
 
 type ToolCardProps = {
-  tool: ToolDefinition;
+  tool: HomeFeaturedTool;
 };
 
 export function ToolCard({ tool }: ToolCardProps) {
-  const isActive = tool.status === "active";
-
   return (
-    <article className={isActive ? "tool-card active" : "tool-card disabled"}>
-      <div className="tool-card-top">
-        <span className="tool-icon" aria-hidden="true">
-          {tool.shortCode}
-        </span>
-        <span className="tool-status">{isActive ? "사용 가능" : "준비 중"}</span>
+    <article
+      className={`home-feature-card home-feature-card-${tool.spotlight}`}
+      aria-labelledby={`feature-${tool.id}`}
+    >
+      <div className="home-feature-media">
+        <Image
+          src={tool.imageSrc}
+          alt={tool.imageAlt}
+          width={tool.imageWidth}
+          height={tool.imageHeight}
+          className="home-feature-image"
+        />
+        <div className="home-feature-media-bar">
+          <span className="home-feature-category">{tool.category}</span>
+          <span className="home-feature-code" aria-hidden="true">
+            {tool.shortCode}
+          </span>
+        </div>
       </div>
-      <h2>{tool.name}</h2>
-      <p>{tool.description}</p>
-      {isActive ? (
-        <Link href={tool.href} className="button-link">
-          시작하기
+
+      <div className="home-feature-content">
+        <div className="home-feature-topline">
+          <span className="home-feature-eyebrow">{tool.eyebrow}</span>
+          <span className="home-feature-chip">{tool.chipLabel}</span>
+        </div>
+
+        <h3 id={`feature-${tool.id}`}>{tool.name}</h3>
+        <p>{tool.homeDescription}</p>
+
+        <ul className="home-feature-list" aria-label={`${tool.name} 핵심 포인트`}>
+          {tool.highlights.map((highlight) => (
+            <li key={highlight}>{highlight}</li>
+          ))}
+        </ul>
+
+        <Link href={tool.href} className="button-link home-feature-action">
+          {tool.ctaLabel}
         </Link>
-      ) : (
-        <span className="button-link disabled" aria-disabled="true">
-          준비 중
-        </span>
-      )}
+      </div>
     </article>
   );
 }
