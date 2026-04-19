@@ -2,38 +2,24 @@
 
 import { useMemo } from "react";
 import {
-  Background,
-  BackgroundVariant,
-  Handle,
-  MarkerType,
-  Position,
-  ReactFlow,
-  type Edge,
-  type Node,
-  type NodeProps,
-} from "@xyflow/react";
-import {
-  buildFlowchartLayout,
   flowchartNodeTypeOptions,
+  getFallbackFlowchartLayout,
+  type FlowchartDirection,
+  type FlowchartLayoutNode,
+  type FlowchartDocument,
   type FlowchartNodeType,
-  type FlowchartState,
 } from "@/lib/flowchart/model";
 
-type FlowNodeData = {
-  color?: string;
-  lane?: string;
-  name: string;
-  notes?: string;
-  owner?: string;
-  selected: boolean;
-  status?: string;
-  type: FlowchartNodeType;
+type FlowchartPreviewProps = {
+  document: FlowchartDocument;
+  onSelectStep: (stepId: string) => void;
+  selectedStepId?: string;
 };
 
-type FlowchartPreviewProps = {
-  selectedNodeId?: string;
-  state: FlowchartState;
-  onSelectNode: (nodeId: string) => void;
+type EdgeGeometry = {
+  labelX: number;
+  labelY: number;
+  path: string;
 };
 
 function getNodeTypeLabel(nodeType: FlowchartNodeType) {
@@ -43,109 +29,167 @@ function getNodeTypeLabel(nodeType: FlowchartNodeType) {
   );
 }
 
-function FlowNodeCard({ data }: NodeProps<Node<FlowNodeData>>) {
-  return (
-    <div
-      className={`flowchart-node flowchart-node-${data.type}${data.selected ? " is-selected" : ""}`}
-      style={{ "--flow-node-accent": data.color ?? "#5B6EE1" } as React.CSSProperties}
-    >
-      {data.type !== "start" ? <Handle position={Position.Left} type="target" /> : null}
-      <div className="flowchart-node-badge">{getNodeTypeLabel(data.type)}</div>
-      <div className="flowchart-node-title">{data.name}</div>
-      <div className="flowchart-node-meta">
-        <span>{data.lane?.trim() || "기본 흐름"}</span>
-        <span>{data.owner?.trim() || "담당자 미정"}</span>
-      </div>
-      <div className="flowchart-node-notes">
-        {data.notes?.trim() || "설명이 비어 있습니다."}
-      </div>
-      {data.type !== "end" ? <Handle position={Position.Right} type="source" /> : null}
-    </div>
-  );
+function getEdgeGeometry(
+  sourceStep: FlowchartLayoutNode,
+  targetStep: FlowchartLayoutNode,
+  direction: FlowchartDirection,
+): EdgeGeometry {
+  if (direction === "LR") {
+    const startX = sourceStep.position.x + sourceStep.size.width;
+    const startY = sourceStep.position.y + sourceStep.size.height / 2;
+    const endX = targetStep.position.x;
+    const endY = targetStep.position.y + targetStep.size.height / 2;
+    const midX = startX + (endX - startX) / 2;
+
+    return {
+      path: `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`,
+      labelX: midX,
+      labelY: startY + (endY - startY) / 2 - 8,
+    };
+  }
+
+  const startX = sourceStep.position.x + sourceStep.size.width / 2;
+  const startY = sourceStep.position.y + sourceStep.size.height;
+  const endX = targetStep.position.x + targetStep.size.width / 2;
+  const endY = targetStep.position.y;
+  const midY = startY + (endY - startY) / 2;
+
+  return {
+    path: `M ${startX} ${startY} L ${startX} ${midY} L ${endX} ${midY} L ${endX} ${endY}`,
+    labelX: startX + (endX - startX) / 2,
+    labelY: midY - 8,
+  };
 }
 
-const nodeTypes = {
-  officeNode: FlowNodeCard,
-};
-
 export function FlowchartPreview({
-  selectedNodeId,
-  state,
-  onSelectNode,
+  document,
+  onSelectStep,
+  selectedStepId,
 }: FlowchartPreviewProps) {
-  const layout = useMemo(() => buildFlowchartLayout(state), [state]);
-
-  const nodes = useMemo<Array<Node<FlowNodeData>>>(
+  const layout = useMemo(() => getFallbackFlowchartLayout(document), [document]);
+  const stepMap = useMemo(
+    () => new Map(layout.steps.map((step) => [step.id, step])),
+    [layout.steps],
+  );
+  const canvasWidth = useMemo(
     () =>
-      layout.nodes.map((node) => ({
-        id: node.id,
-        type: "officeNode",
-        position: node.position,
-        data: {
-          name: node.name,
-          type: node.type,
-          lane: node.lane,
-          owner: node.owner,
-          notes: node.notes,
-          status: node.status,
-          color: node.color,
-          selected: selectedNodeId === node.id,
-        },
-        draggable: false,
-        selectable: true,
-      })),
-    [layout.nodes, selectedNodeId],
+      Math.max(
+        720,
+        ...layout.steps.map((step) => step.position.x + step.size.width + 80),
+      ),
+    [layout.steps],
+  );
+  const canvasHeight = useMemo(
+    () =>
+      Math.max(
+        520,
+        ...layout.steps.map((step) => step.position.y + step.size.height + 120),
+      ),
+    [layout.steps],
   );
 
-  const edges = useMemo<Array<Edge>>(
-    () =>
-      layout.edges.map((edge) => ({
-        id: edge.id,
-        source: edge.sourceId,
-        target: edge.targetId,
-        label: edge.label || undefined,
-        type: "smoothstep",
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          color: "#98A2B3",
-        },
-        style: {
-          stroke: "#98A2B3",
-          strokeWidth: 1.4,
-        },
-        labelStyle: {
-          fill: "#667085",
-          fontSize: 12,
-          fontWeight: 700,
-        },
-      })),
-    [layout.edges],
-  );
-
-  if (nodes.length === 0) {
+  if (document.steps.length === 0) {
     return (
       <div className="preview-placeholder">
-        <strong>{state.title}</strong>
-        <p>단계와 연결을 추가하면 플로우차트가 여기에 표시됩니다.</p>
+        <strong>{document.title || "새 플로우차트"}</strong>
+        <p>단계를 추가하면 표준 기호와 분기 라벨이 반영된 미리보기가 여기에서 열립니다.</p>
       </div>
     );
   }
 
   return (
     <div className="flowchart-preview-surface">
-      <ReactFlow
-        edges={edges}
-        fitView
-        fitViewOptions={{ padding: 0.18 }}
-        nodeTypes={nodeTypes}
-        nodes={nodes}
-        nodesConnectable={false}
-        nodesDraggable={false}
-        proOptions={{ hideAttribution: true }}
-        onNodeClick={(_, node) => onSelectNode(node.id)}
+      <div
+        className="flowchart-static-canvas"
+        style={{ width: canvasWidth, height: canvasHeight }}
       >
-        <Background color="#E6E8EC" gap={28} variant={BackgroundVariant.Dots} />
-      </ReactFlow>
+        <svg
+          aria-hidden="true"
+          className="flowchart-static-edge-layer"
+          viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
+        >
+          <defs>
+            <marker
+              id="flowchart-arrowhead"
+              markerHeight="8"
+              markerWidth="8"
+              orient="auto-start-reverse"
+              refX="8"
+              refY="4"
+            >
+              <path d="M 0 0 L 8 4 L 0 8 z" fill="#94A3B8" />
+            </marker>
+          </defs>
+
+          {layout.connections.map((connection) => {
+            const sourceStep = stepMap.get(connection.sourceStepId);
+            const targetStep = stepMap.get(connection.targetStepId);
+
+            if (!sourceStep || !targetStep) {
+              return null;
+            }
+
+            const geometry = getEdgeGeometry(
+              sourceStep,
+              targetStep,
+              document.direction,
+            );
+
+            return (
+              <g key={connection.id}>
+                <path
+                  className="flowchart-static-edge-path"
+                  d={geometry.path}
+                  markerEnd="url(#flowchart-arrowhead)"
+                />
+                {connection.label ? (
+                  <text
+                    className="flowchart-edge-label"
+                    textAnchor="middle"
+                    x={geometry.labelX}
+                    y={geometry.labelY}
+                  >
+                    {connection.label}
+                  </text>
+                ) : null}
+              </g>
+            );
+          })}
+        </svg>
+
+        {layout.steps.map((step) => {
+          const hasCaption = Boolean(step.lane?.trim() || step.owner?.trim());
+
+          return (
+            <button
+              className={`flowchart-node flowchart-static-node flowchart-node-${step.type}${
+                selectedStepId === step.id ? " is-selected" : ""
+              }`}
+              key={step.id}
+              style={{
+                left: step.position.x,
+                top: step.position.y,
+              }}
+              type="button"
+              onClick={() => onSelectStep(step.id)}
+            >
+              <div className={`flowchart-node-symbol flowchart-node-symbol-${step.type}`}>
+                <div className="flowchart-node-symbol-inner">
+                  <div className="flowchart-node-type">{getNodeTypeLabel(step.type)}</div>
+                  <div className="flowchart-node-title">{step.label || "이름 없는 단계"}</div>
+                </div>
+              </div>
+
+              {hasCaption ? (
+                <div className="flowchart-node-caption">
+                  {step.lane?.trim() ? <span>{step.lane.trim()}</span> : null}
+                  {step.owner?.trim() ? <span>{step.owner.trim()}</span> : null}
+                </div>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

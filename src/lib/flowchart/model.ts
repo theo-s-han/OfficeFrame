@@ -1,52 +1,83 @@
-import {
-  defaultGanttTaskColor,
-  ganttTaskColorOptions,
-  isValidGanttTaskColor,
-  normalizeGanttTaskColor,
-} from "@/lib/gantt/taskModel";
+import ELK, { type ElkExtendedEdge, type ElkNode } from "elkjs/lib/elk.bundled.js";
+
+export type FlowchartDirection = "TB" | "LR";
 
 export type FlowchartNodeType =
   | "start"
   | "process"
   | "decision"
-  | "end"
   | "document"
-  | "data";
+  | "data"
+  | "subprocess"
+  | "end";
 
-export type FlowchartNodeStatus = "default" | "active" | "warning";
-
-export type FlowchartNode = {
-  color?: string;
+export type FlowchartBranch = {
   id: string;
+  label: string;
+  targetStepId: string;
+};
+
+export type FlowchartStep = {
+  branches: FlowchartBranch[];
+  id: string;
+  label: string;
   lane?: string;
-  name: string;
+  nextStepId?: string;
   notes?: string;
   order: number;
   owner?: string;
-  status?: FlowchartNodeStatus;
   type: FlowchartNodeType;
 };
 
-export type FlowchartEdge = {
-  id: string;
-  label?: string;
-  sourceId: string;
-  targetId: string;
-};
-
-export type FlowchartState = {
-  edges: FlowchartEdge[];
-  nodes: FlowchartNode[];
-  selectedNodeId?: string;
+export type FlowchartDocument = {
+  direction: FlowchartDirection;
+  laneMode: boolean;
+  steps: FlowchartStep[];
   title: string;
 };
 
-export type FlowchartValidationIssue = {
-  edgeId?: string;
-  field: "node" | "edge";
-  message: string;
-  nodeId?: string;
+export type FlowchartConnection = {
+  branchId?: string;
+  id: string;
+  kind: "next" | "branch";
+  label?: string;
+  sourceStepId: string;
+  sourceType: FlowchartNodeType;
+  targetStepId: string;
 };
+
+export type FlowchartValidationIssue = {
+  branchId?: string;
+  connectionId?: string;
+  field: "document" | "step" | "branch" | "connection";
+  message: string;
+  severity: "error" | "warning";
+  stepId?: string;
+};
+
+export type FlowchartLayoutNode = FlowchartStep & {
+  position: {
+    x: number;
+    y: number;
+  };
+  size: {
+    height: number;
+    width: number;
+  };
+};
+
+export type FlowchartLayout = {
+  connections: FlowchartConnection[];
+  steps: FlowchartLayoutNode[];
+};
+
+export const flowchartDirectionOptions: Array<{
+  label: string;
+  value: FlowchartDirection;
+}> = [
+  { value: "TB", label: "위에서 아래" },
+  { value: "LR", label: "왼쪽에서 오른쪽" },
+];
 
 export const flowchartNodeTypeOptions: Array<{
   label: string;
@@ -55,464 +86,1040 @@ export const flowchartNodeTypeOptions: Array<{
   { value: "start", label: "시작" },
   { value: "process", label: "처리" },
   { value: "decision", label: "결정" },
-  { value: "end", label: "종료" },
   { value: "document", label: "문서" },
   { value: "data", label: "데이터" },
+  { value: "subprocess", label: "서브프로세스" },
+  { value: "end", label: "종료" },
 ];
 
-export const flowchartStatusOptions: Array<{
-  label: string;
-  value: FlowchartNodeStatus;
-}> = [
-  { value: "default", label: "기본" },
-  { value: "active", label: "진행" },
-  { value: "warning", label: "주의" },
-];
+const elk = new ELK();
 
-function createNodeId(nodes: FlowchartNode[]) {
+const flowchartNodeSizes: Record<
+  FlowchartNodeType,
+  {
+    height: number;
+    width: number;
+  }
+> = {
+  start: { width: 220, height: 92 },
+  process: { width: 220, height: 120 },
+  decision: { width: 220, height: 188 },
+  document: { width: 220, height: 138 },
+  data: { width: 220, height: 128 },
+  subprocess: { width: 220, height: 120 },
+  end: { width: 220, height: 92 },
+};
+
+function createStepId(steps: FlowchartStep[]) {
   const nextNumber =
-    nodes.reduce((maxValue, node) => {
-      const matched = node.id.match(/^flow-node-(\d+)$/);
+    steps.reduce((maxValue, step) => {
+      const matched = step.id.match(/^flow-step-(\d+)$/);
 
       return matched ? Math.max(maxValue, Number(matched[1])) : maxValue;
     }, 0) + 1;
 
-  return `flow-node-${nextNumber}`;
+  return `flow-step-${nextNumber}`;
 }
 
-function createEdgeId(edges: FlowchartEdge[]) {
+function createBranchId(branches: FlowchartBranch[]) {
   const nextNumber =
-    edges.reduce((maxValue, edge) => {
-      const matched = edge.id.match(/^flow-edge-(\d+)$/);
+    branches.reduce((maxValue, branch) => {
+      const matched = branch.id.match(/^flow-branch-(\d+)$/);
 
       return matched ? Math.max(maxValue, Number(matched[1])) : maxValue;
     }, 0) + 1;
 
-  return `flow-edge-${nextNumber}`;
-}
-
-function getSuggestedFlowchartColor(index: number) {
-  return (
-    ganttTaskColorOptions[index % ganttTaskColorOptions.length]?.value ??
-    defaultGanttTaskColor
-  );
-}
-
-export function createEmptyFlowchartNode(nodes: FlowchartNode[]): FlowchartNode {
-  return {
-    id: createNodeId(nodes),
-    name: "새 단계",
-    type: "process",
-    lane: "",
-    status: "default",
-    owner: "",
-    notes: "",
-    color: getSuggestedFlowchartColor(nodes.length),
-    order: nodes.length,
-  };
-}
-
-export function createEmptyFlowchartEdge(
-  nodes: FlowchartNode[],
-  edges: FlowchartEdge[],
-): FlowchartEdge {
-  const fallbackSourceId = nodes[0]?.id ?? "";
-  const fallbackTargetId = nodes[1]?.id ?? fallbackSourceId;
-
-  return {
-    id: createEdgeId(edges),
-    sourceId: fallbackSourceId,
-    targetId: fallbackTargetId,
-    label: "",
-  };
-}
-
-export function createSampleFlowchartState(): FlowchartState {
-  const nodes: FlowchartNode[] = [
-    {
-      id: "flow-node-1",
-      name: "요청 접수",
-      type: "start",
-      lane: "접수",
-      status: "active",
-      owner: "PM",
-      notes: "새 요청을 등록합니다.",
-      color: "#5B6EE1",
-      order: 0,
-    },
-    {
-      id: "flow-node-2",
-      name: "요건 확인",
-      type: "process",
-      lane: "기획",
-      status: "active",
-      owner: "Planner",
-      notes: "범위와 우선순위를 확인합니다.",
-      color: "#2F7E9E",
-      order: 1,
-    },
-    {
-      id: "flow-node-3",
-      name: "구조 적합성 판단",
-      type: "decision",
-      lane: "검토",
-      status: "warning",
-      owner: "Lead",
-      notes: "기존 템플릿으로 처리 가능한지 결정합니다.",
-      color: "#A07A2E",
-      order: 2,
-    },
-    {
-      id: "flow-node-4",
-      name: "빠른 수정안 작성",
-      type: "document",
-      lane: "기획",
-      status: "default",
-      owner: "Planner",
-      notes: "기존 구조에 맞는 변경안을 정리합니다.",
-      color: "#4E8B63",
-      order: 3,
-    },
-    {
-      id: "flow-node-5",
-      name: "신규 도구 설계",
-      type: "data",
-      lane: "설계",
-      status: "default",
-      owner: "Architect",
-      notes: "입력/출력과 오픈소스 선택을 정리합니다.",
-      color: "#A65D7B",
-      order: 4,
-    },
-    {
-      id: "flow-node-6",
-      name: "구현 및 검증",
-      type: "process",
-      lane: "개발",
-      status: "default",
-      owner: "Dev",
-      notes: "preview, export, validation을 함께 검증합니다.",
-      color: "#7A68B8",
-      order: 5,
-    },
-    {
-      id: "flow-node-7",
-      name: "문서 반영",
-      type: "end",
-      lane: "완료",
-      status: "default",
-      owner: "Ops",
-      notes: "결과를 문서/PPT에 붙여넣습니다.",
-      color: "#5B6EE1",
-      order: 6,
-    },
-  ];
-  const edges: FlowchartEdge[] = [
-    { id: "flow-edge-1", sourceId: "flow-node-1", targetId: "flow-node-2", label: "" },
-    { id: "flow-edge-2", sourceId: "flow-node-2", targetId: "flow-node-3", label: "" },
-    { id: "flow-edge-3", sourceId: "flow-node-3", targetId: "flow-node-4", label: "예" },
-    { id: "flow-edge-4", sourceId: "flow-node-3", targetId: "flow-node-5", label: "아니오" },
-    { id: "flow-edge-5", sourceId: "flow-node-4", targetId: "flow-node-6", label: "" },
-    { id: "flow-edge-6", sourceId: "flow-node-5", targetId: "flow-node-6", label: "" },
-    { id: "flow-edge-7", sourceId: "flow-node-6", targetId: "flow-node-7", label: "" },
-  ];
-
-  return {
-    title: "Office Tool 문서 처리 흐름",
-    nodes,
-    edges,
-    selectedNodeId: nodes[0]?.id,
-  };
-}
-
-export function addFlowchartNode(nodes: FlowchartNode[]) {
-  return [...nodes, createEmptyFlowchartNode(nodes)];
-}
-
-export function updateFlowchartNode(
-  nodes: FlowchartNode[],
-  nodeId: string,
-  patch: Partial<FlowchartNode>,
-) {
-  return nodes.map((node) =>
-    node.id === nodeId
-      ? {
-          ...node,
-          ...patch,
-        }
-      : node,
-  );
-}
-
-export function removeFlowchartNode(
-  nodes: FlowchartNode[],
-  edges: FlowchartEdge[],
-  nodeId: string,
-) {
-  return {
-    nodes: nodes.filter((node) => node.id !== nodeId),
-    edges: edges.filter(
-      (edge) => edge.sourceId !== nodeId && edge.targetId !== nodeId,
-    ),
-  };
-}
-
-export function addFlowchartEdge(
-  nodes: FlowchartNode[],
-  edges: FlowchartEdge[],
-) {
-  return [...edges, createEmptyFlowchartEdge(nodes, edges)];
-}
-
-export function updateFlowchartEdge(
-  edges: FlowchartEdge[],
-  edgeId: string,
-  patch: Partial<FlowchartEdge>,
-) {
-  return edges.map((edge) =>
-    edge.id === edgeId
-      ? {
-          ...edge,
-          ...patch,
-        }
-      : edge,
-  );
-}
-
-export function removeFlowchartEdge(edges: FlowchartEdge[], edgeId: string) {
-  return edges.filter((edge) => edge.id !== edgeId);
-}
-
-export function getFlowchartNodeOptions(nodes: FlowchartNode[], excludeId?: string) {
-  return nodes
-    .filter((node) => node.id !== excludeId)
-    .sort((left, right) => left.order - right.order)
-    .map((node) => ({
-      value: node.id,
-      label: `${node.name}${node.lane ? ` · ${node.lane}` : ""}`,
-    }));
+  return `flow-branch-${nextNumber}`;
 }
 
 function createIssue(
-  field: "node" | "edge",
+  severity: "error" | "warning",
+  field: FlowchartValidationIssue["field"],
   message: string,
   options?: {
-    edgeId?: string;
-    nodeId?: string;
+    branchId?: string;
+    connectionId?: string;
+    stepId?: string;
   },
 ): FlowchartValidationIssue {
   return {
+    severity,
     field,
     message,
-    edgeId: options?.edgeId,
-    nodeId: options?.nodeId,
+    branchId: options?.branchId,
+    connectionId: options?.connectionId,
+    stepId: options?.stepId,
   };
 }
 
-export function validateFlowchartState(state: FlowchartState) {
+function createEmptyBranch(branches: FlowchartBranch[]): FlowchartBranch {
+  return {
+    id: createBranchId(branches),
+    label: "",
+    targetStepId: "",
+  };
+}
+
+function createDefaultDecisionBranches(): FlowchartBranch[] {
+  return [
+    {
+      id: "flow-branch-1",
+      label: "예",
+      targetStepId: "",
+    },
+    {
+      id: "flow-branch-2",
+      label: "아니오",
+      targetStepId: "",
+    },
+  ];
+}
+
+function normalizeStepForType(step: FlowchartStep) {
+  if (step.type === "decision") {
+    const branches =
+      step.branches.length >= 2
+        ? step.branches
+        : [
+            ...step.branches,
+            ...Array.from({ length: 2 - step.branches.length }, (_, index) =>
+              createEmptyBranch([...step.branches, ...step.branches.slice(0, index)]),
+            ),
+          ];
+
+    return {
+      ...step,
+      nextStepId: "",
+      branches,
+    };
+  }
+
+  if (step.type === "end") {
+    return {
+      ...step,
+      nextStepId: "",
+      branches: [],
+    };
+  }
+
+  return {
+    ...step,
+    branches: [],
+  };
+}
+
+export function createEmptyFlowchartStep(steps: FlowchartStep[]): FlowchartStep {
+  return {
+    id: createStepId(steps),
+    label: "",
+    type: "process",
+    lane: "",
+    owner: "",
+    notes: "",
+    nextStepId: "",
+    branches: [],
+    order: steps.length,
+  };
+}
+
+export function createEmptyFlowchartDocument(): FlowchartDocument {
+  return {
+    title: "새 플로우차트",
+    direction: "TB",
+    laneMode: false,
+    steps: [],
+  };
+}
+
+export function createSampleFlowchartDocument(): FlowchartDocument {
+  return {
+    title: "문서 요청 처리 플로우",
+    direction: "TB",
+    laneMode: false,
+    steps: [
+      {
+        id: "flow-step-1",
+        label: "요청 접수",
+        type: "start",
+        owner: "PM",
+        notes: "새 요청을 등록합니다.",
+        nextStepId: "flow-step-2",
+        branches: [],
+        order: 0,
+      },
+      {
+        id: "flow-step-2",
+        label: "요청 내용 확인",
+        type: "process",
+        owner: "기획",
+        notes: "요청 범위와 우선순위를 확인합니다.",
+        nextStepId: "flow-step-3",
+        branches: [],
+        order: 1,
+      },
+      {
+        id: "flow-step-3",
+        label: "기존 템플릿으로 처리 가능한가?",
+        type: "decision",
+        owner: "리드",
+        notes: "재사용 가능 여부를 판단합니다.",
+        branches: [
+          {
+            id: "flow-branch-1",
+            label: "예",
+            targetStepId: "flow-step-4",
+          },
+          {
+            id: "flow-branch-2",
+            label: "아니오",
+            targetStepId: "flow-step-5",
+          },
+        ],
+        order: 2,
+      },
+      {
+        id: "flow-step-4",
+        label: "기존 문서 템플릿 수정",
+        type: "document",
+        owner: "기획",
+        notes: "문서 구조에 맞게 수정안을 정리합니다.",
+        nextStepId: "flow-step-6",
+        branches: [],
+        order: 3,
+      },
+      {
+        id: "flow-step-5",
+        label: "입출력 스키마 정의",
+        type: "data",
+        owner: "아키텍트",
+        notes: "새 플로우에 필요한 입력과 출력을 정리합니다.",
+        nextStepId: "flow-step-6",
+        branches: [],
+        order: 4,
+      },
+      {
+        id: "flow-step-6",
+        label: "구현 작업 묶음 실행",
+        type: "subprocess",
+        owner: "개발",
+        notes: "구현과 검증 흐름을 한 묶음으로 진행합니다.",
+        nextStepId: "flow-step-7",
+        branches: [],
+        order: 5,
+      },
+      {
+        id: "flow-step-7",
+        label: "검토 반영 필요?",
+        type: "decision",
+        owner: "운영",
+        notes: "최종 검토 결과를 확인합니다.",
+        branches: [
+          {
+            id: "flow-branch-3",
+            label: "예",
+            targetStepId: "flow-step-8",
+          },
+          {
+            id: "flow-branch-4",
+            label: "아니오",
+            targetStepId: "flow-step-9",
+          },
+        ],
+        order: 6,
+      },
+      {
+        id: "flow-step-8",
+        label: "문서 반영 완료",
+        type: "document",
+        nextStepId: "flow-step-9",
+        owner: "운영",
+        notes: "문서와 PPT에 결과를 반영합니다.",
+        branches: [],
+        order: 7,
+      },
+      {
+        id: "flow-step-9",
+        label: "완료",
+        type: "end",
+        owner: "운영",
+        notes: "최종 결과를 완료 상태로 마무리합니다.",
+        branches: [],
+        order: 8,
+      },
+    ],
+  };
+}
+
+export function addFlowchartStep(steps: FlowchartStep[]) {
+  return [...steps, createEmptyFlowchartStep(steps)];
+}
+
+export function updateFlowchartStep(
+  steps: FlowchartStep[],
+  stepId: string,
+  patch: Partial<FlowchartStep>,
+) {
+  return steps.map((step) => {
+    if (step.id !== stepId) {
+      return step;
+    }
+
+    const nextStep = normalizeStepForType({
+      ...step,
+      ...patch,
+    });
+
+    if (step.type !== "decision" && nextStep.type === "decision" && step.branches.length === 0) {
+      return {
+        ...nextStep,
+        branches: createDefaultDecisionBranches(),
+      };
+    }
+
+    if (step.type === "decision" && nextStep.type !== "decision") {
+      return {
+        ...nextStep,
+        nextStepId: step.branches[0]?.targetStepId ?? "",
+      };
+    }
+
+    return nextStep;
+  });
+}
+
+export function removeFlowchartStep(steps: FlowchartStep[], stepId: string) {
+  const remainingSteps = steps.filter((step) => step.id !== stepId);
+
+  return remainingSteps.map((step, index) =>
+    normalizeStepForType({
+      ...step,
+      nextStepId: step.nextStepId === stepId ? "" : step.nextStepId,
+      branches: step.branches
+        .map((branch) =>
+          branch.targetStepId === stepId
+            ? {
+                ...branch,
+                targetStepId: "",
+              }
+            : branch,
+        )
+        .filter((branch) => step.type === "decision" || branch.targetStepId !== stepId),
+      order: index,
+    }),
+  );
+}
+
+export function addFlowchartBranch(steps: FlowchartStep[], stepId: string) {
+  return steps.map((step) =>
+    step.id === stepId && step.type === "decision"
+      ? {
+          ...step,
+          branches: [...step.branches, createEmptyBranch(step.branches)],
+        }
+      : step,
+  );
+}
+
+export function updateFlowchartBranch(
+  steps: FlowchartStep[],
+  stepId: string,
+  branchId: string,
+  patch: Partial<FlowchartBranch>,
+) {
+  return steps.map((step) =>
+    step.id === stepId && step.type === "decision"
+      ? {
+          ...step,
+          branches: step.branches.map((branch) =>
+            branch.id === branchId
+              ? {
+                  ...branch,
+                  ...patch,
+                }
+              : branch,
+          ),
+        }
+      : step,
+  );
+}
+
+export function removeFlowchartBranch(
+  steps: FlowchartStep[],
+  stepId: string,
+  branchId: string,
+) {
+  return steps.map((step) =>
+    step.id === stepId && step.type === "decision"
+      ? {
+          ...step,
+          branches: step.branches.filter((branch) => branch.id !== branchId),
+        }
+      : step,
+  );
+}
+
+export function getFlowchartStepOptions(
+  steps: FlowchartStep[],
+  excludeId?: string,
+) {
+  return steps
+    .filter((step) => step.id !== excludeId)
+    .sort((left, right) => left.order - right.order)
+    .map((step) => ({
+      value: step.id,
+      label: step.label.trim() || `단계 ${step.order + 1}`,
+    }));
+}
+
+export function getFlowchartConnections(document: FlowchartDocument) {
+  const connections: FlowchartConnection[] = [];
+
+  document.steps.forEach((step) => {
+    if (step.type === "decision") {
+      step.branches.forEach((branch) => {
+        if (!branch.targetStepId) {
+          return;
+        }
+
+        connections.push({
+          id: `${step.id}:${branch.id}`,
+          kind: "branch",
+          branchId: branch.id,
+          label: branch.label.trim(),
+          sourceStepId: step.id,
+          sourceType: step.type,
+          targetStepId: branch.targetStepId,
+        });
+      });
+      return;
+    }
+
+    if (step.type === "end" || !step.nextStepId) {
+      return;
+    }
+
+    connections.push({
+      id: `${step.id}:next`,
+      kind: "next",
+      label: "",
+      sourceStepId: step.id,
+      sourceType: step.type,
+      targetStepId: step.nextStepId,
+    });
+  });
+
+  return connections;
+}
+
+export function getRenderableFlowchartConnections(document: FlowchartDocument) {
+  const stepIds = new Set(document.steps.map((step) => step.id));
+
+  return getFlowchartConnections(document).filter(
+    (connection) =>
+      connection.sourceStepId !== connection.targetStepId &&
+      stepIds.has(connection.sourceStepId) &&
+      stepIds.has(connection.targetStepId),
+  );
+}
+
+function findCycles(connections: FlowchartConnection[]) {
+  const adjacency = new Map<string, string[]>();
+  const visited = new Set<string>();
+  const stack = new Set<string>();
+
+  connections.forEach((connection) => {
+    adjacency.set(connection.sourceStepId, [
+      ...(adjacency.get(connection.sourceStepId) ?? []),
+      connection.targetStepId,
+    ]);
+  });
+
+  function visit(stepId: string): boolean {
+    if (stack.has(stepId)) {
+      return true;
+    }
+
+    if (visited.has(stepId)) {
+      return false;
+    }
+
+    visited.add(stepId);
+    stack.add(stepId);
+
+    const hasCycle = (adjacency.get(stepId) ?? []).some((targetStepId) =>
+      visit(targetStepId),
+    );
+
+    stack.delete(stepId);
+    return hasCycle;
+  }
+
+  return Array.from(adjacency.keys()).some((stepId) => visit(stepId));
+}
+
+export function validateFlowchartDocument(document: FlowchartDocument) {
   const issues: FlowchartValidationIssue[] = [];
-  const nodeIds = new Set(state.nodes.map((node) => node.id));
+  const seenStepIds = new Set<string>();
+  const stepIds = new Set(document.steps.map((step) => step.id));
+  const connections = getFlowchartConnections(document);
+  const validConnections: FlowchartConnection[] = [];
   const incoming = new Map<string, number>();
   const outgoing = new Map<string, number>();
-  const seenNodeIds = new Set<string>();
-  const seenEdgeIds = new Set<string>();
 
-  state.nodes.forEach((node) => {
-    if (seenNodeIds.has(node.id)) {
-      issues.push(createIssue("node", "내부 ID가 중복되었습니다.", { nodeId: node.id }));
-    }
+  if (!document.title.trim()) {
+    issues.push(createIssue("error", "document", "플로우차트명을 입력해 주세요."));
+  }
 
-    seenNodeIds.add(node.id);
+  if (document.steps.length < 2) {
+    issues.push(
+      createIssue(
+        "error",
+        "document",
+        "플로우차트는 최소 2개 이상의 단계가 필요합니다.",
+      ),
+    );
+  }
 
-    if (!node.name.trim()) {
-      issues.push(createIssue("node", "단계명을 입력하세요.", { nodeId: node.id }));
-    }
-
-    if (node.color && !isValidGanttTaskColor(node.color)) {
+  document.steps.forEach((step) => {
+    if (seenStepIds.has(step.id)) {
       issues.push(
-        createIssue("node", "색상은 #RRGGBB 형식이어야 합니다.", { nodeId: node.id }),
+        createIssue("error", "step", "단계 ID가 중복되었습니다.", {
+          stepId: step.id,
+        }),
+      );
+    }
+
+    seenStepIds.add(step.id);
+
+    if (!step.label.trim()) {
+      issues.push(
+        createIssue("error", "step", "단계명을 입력해 주세요.", {
+          stepId: step.id,
+        }),
+      );
+    }
+
+    if (step.type === "decision") {
+      const seenBranchLabels = new Set<string>();
+
+      if (step.branches.length < 2) {
+        issues.push(
+          createIssue(
+            "error",
+            "step",
+            "결정 단계에는 최소 2개 이상의 분기가 필요합니다.",
+            {
+              stepId: step.id,
+            },
+          ),
+        );
+      }
+
+      step.branches.forEach((branch) => {
+        const normalizedLabel = branch.label.trim().toLowerCase();
+
+        if (!branch.label.trim()) {
+          issues.push(
+            createIssue("error", "branch", "분기 라벨을 입력해 주세요.", {
+              stepId: step.id,
+              branchId: branch.id,
+            }),
+          );
+        }
+
+        if (!branch.targetStepId) {
+          issues.push(
+            createIssue("error", "branch", "분기 대상 단계를 선택해 주세요.", {
+              stepId: step.id,
+              branchId: branch.id,
+            }),
+          );
+        }
+
+        if (normalizedLabel) {
+          if (seenBranchLabels.has(normalizedLabel)) {
+            issues.push(
+              createIssue(
+                "error",
+                "branch",
+                "같은 결정 단계 안에서 분기 라벨은 중복될 수 없습니다.",
+                {
+                  stepId: step.id,
+                  branchId: branch.id,
+                },
+              ),
+            );
+          }
+
+          seenBranchLabels.add(normalizedLabel);
+        }
+      });
+
+      return;
+    }
+
+    if (step.type === "end") {
+      if (step.nextStepId || step.branches.length > 0) {
+        issues.push(
+          createIssue(
+            "error",
+            "step",
+            "종료 단계에는 다음 단계나 분기를 둘 수 없습니다.",
+            {
+              stepId: step.id,
+            },
+          ),
+        );
+      }
+
+      return;
+    }
+
+    if (!step.nextStepId) {
+      issues.push(
+        createIssue("error", "step", "다음 단계를 선택해 주세요.", {
+          stepId: step.id,
+        }),
+      );
+    }
+
+    if (step.branches.length > 0) {
+      issues.push(
+        createIssue(
+          "error",
+          "step",
+          "분기 입력은 결정 단계에서만 사용할 수 있습니다.",
+          {
+            stepId: step.id,
+          },
+        ),
       );
     }
   });
 
-  state.edges.forEach((edge) => {
-    if (seenEdgeIds.has(edge.id)) {
-      issues.push(createIssue("edge", "연결 ID가 중복되었습니다.", { edgeId: edge.id }));
-    }
-
-    seenEdgeIds.add(edge.id);
-
-    if (!nodeIds.has(edge.sourceId) || !nodeIds.has(edge.targetId)) {
+  connections.forEach((connection) => {
+    if (!stepIds.has(connection.sourceStepId) || !stepIds.has(connection.targetStepId)) {
       issues.push(
-        createIssue("edge", "존재하는 단계끼리만 연결할 수 있습니다.", {
-          edgeId: edge.id,
-        }),
+        createIssue(
+          "error",
+          "connection",
+          "존재하는 단계끼리만 연결할 수 있습니다.",
+          {
+            connectionId: connection.id,
+          },
+        ),
       );
       return;
     }
 
-    if (edge.sourceId === edge.targetId) {
+    if (connection.sourceStepId === connection.targetStepId) {
       issues.push(
-        createIssue("edge", "자기 자신으로 연결할 수 없습니다.", {
-          edgeId: edge.id,
-        }),
+        createIssue(
+          "error",
+          "connection",
+          "자기 자신으로 연결할 수 없습니다.",
+          {
+            connectionId: connection.id,
+          },
+        ),
       );
+      return;
     }
 
-    incoming.set(edge.targetId, (incoming.get(edge.targetId) ?? 0) + 1);
-    outgoing.set(edge.sourceId, (outgoing.get(edge.sourceId) ?? 0) + 1);
+    validConnections.push(connection);
+    incoming.set(
+      connection.targetStepId,
+      (incoming.get(connection.targetStepId) ?? 0) + 1,
+    );
+    outgoing.set(
+      connection.sourceStepId,
+      (outgoing.get(connection.sourceStepId) ?? 0) + 1,
+    );
   });
 
-  const startNodes = state.nodes.filter((node) => node.type === "start");
-  const endNodes = state.nodes.filter((node) => node.type === "end");
+  const startSteps = document.steps.filter((step) => step.type === "start");
+  const endSteps = document.steps.filter((step) => step.type === "end");
 
-  if (startNodes.length === 0 && state.nodes[0]) {
+  if (startSteps.length !== 1) {
     issues.push(
-      createIssue("node", "시작 단계가 하나 이상 필요합니다.", {
-        nodeId: state.nodes[0].id,
-      }),
+      createIssue(
+        "error",
+        "document",
+        "시작 단계는 정확히 1개여야 합니다.",
+        {
+          stepId: startSteps[0]?.id,
+        },
+      ),
     );
   }
 
-  if (endNodes.length === 0 && state.nodes[0]) {
+  if (endSteps.length === 0) {
     issues.push(
-      createIssue("node", "종료 단계가 하나 이상 필요합니다.", {
-        nodeId: state.nodes[0].id,
-      }),
+      createIssue(
+        "error",
+        "document",
+        "종료 단계는 최소 1개 이상 있어야 합니다.",
+      ),
     );
   }
 
-  startNodes.forEach((node) => {
-    if ((incoming.get(node.id) ?? 0) > 0) {
-      issues.push(
-        createIssue("node", "시작 단계에는 들어오는 연결이 없어야 합니다.", {
-          nodeId: node.id,
-        }),
-      );
-    }
-  });
+  document.steps.forEach((step) => {
+    const currentIncoming = incoming.get(step.id) ?? 0;
+    const currentOutgoing = outgoing.get(step.id) ?? 0;
 
-  endNodes.forEach((node) => {
-    if ((outgoing.get(node.id) ?? 0) > 0) {
-      issues.push(
-        createIssue("node", "종료 단계에서는 나가는 연결을 만들 수 없습니다.", {
-          nodeId: node.id,
-        }),
-      );
-    }
-  });
-
-  return issues;
-}
-
-export function getValidFlowchartState(state: FlowchartState) {
-  const issues = validateFlowchartState(state);
-  const invalidNodeIds = new Set(
-    issues.filter((issue) => issue.nodeId).map((issue) => issue.nodeId as string),
-  );
-  const invalidEdgeIds = new Set(
-    issues.filter((issue) => issue.edgeId).map((issue) => issue.edgeId as string),
-  );
-  const nodes = state.nodes
-    .filter((node) => !invalidNodeIds.has(node.id))
-    .map((node) => ({
-      ...node,
-      color: normalizeGanttTaskColor(node.color),
-    }));
-  const validNodeIds = new Set(nodes.map((node) => node.id));
-  const edges = state.edges.filter(
-    (edge) =>
-      !invalidEdgeIds.has(edge.id) &&
-      validNodeIds.has(edge.sourceId) &&
-      validNodeIds.has(edge.targetId),
-  );
-
-  return {
-    nodes,
-    edges,
-  };
-}
-
-export function buildFlowchartLayout(state: FlowchartState) {
-  const { nodes, edges } = getValidFlowchartState(state);
-  const incoming = new Map<string, number>(nodes.map((node) => [node.id, 0]));
-  const outgoing = new Map<string, string[]>(nodes.map((node) => [node.id, []]));
-
-  edges.forEach((edge) => {
-    incoming.set(edge.targetId, (incoming.get(edge.targetId) ?? 0) + 1);
-    outgoing.set(edge.sourceId, [...(outgoing.get(edge.sourceId) ?? []), edge.targetId]);
-  });
-
-  const starts = nodes
-    .filter((node) => (incoming.get(node.id) ?? 0) === 0)
-    .sort((left, right) => left.order - right.order);
-  const queue = starts.length > 0 ? [...starts.map((node) => node.id)] : [nodes[0]?.id ?? ""];
-  const levels = new Map<string, number>();
-
-  queue.forEach((nodeId) => levels.set(nodeId, 0));
-
-  while (queue.length > 0) {
-    const currentId = queue.shift();
-
-    if (!currentId) {
-      continue;
-    }
-
-    const currentLevel = levels.get(currentId) ?? 0;
-
-    (outgoing.get(currentId) ?? []).forEach((targetId) => {
-      const nextLevel = currentLevel + 1;
-
-      if ((levels.get(targetId) ?? -1) < nextLevel) {
-        levels.set(targetId, nextLevel);
+    if (step.type === "start") {
+      if (currentIncoming > 0) {
+        issues.push(
+          createIssue(
+            "error",
+            "step",
+            "시작 단계에는 들어오는 연결이 없어야 합니다.",
+            {
+              stepId: step.id,
+            },
+          ),
+        );
       }
 
-      if (!queue.includes(targetId)) {
-        queue.push(targetId);
+      if (currentOutgoing !== 1) {
+        issues.push(
+          createIssue(
+            "error",
+            "step",
+            "시작 단계는 정확히 1개의 다음 단계를 가져야 합니다.",
+            {
+              stepId: step.id,
+            },
+          ),
+        );
+      }
+    }
+
+    if (step.type === "end" && currentOutgoing > 0) {
+      issues.push(
+        createIssue(
+          "error",
+          "step",
+          "종료 단계에서 나가는 연결은 허용되지 않습니다.",
+          {
+            stepId: step.id,
+          },
+        ),
+      );
+    }
+
+    if (step.type === "decision" && currentOutgoing < 2) {
+      issues.push(
+        createIssue(
+          "error",
+          "step",
+          "결정 단계는 최소 2개 이상의 분기를 가져야 합니다.",
+          {
+            stepId: step.id,
+          },
+        ),
+      );
+    }
+
+    if (
+      step.type !== "decision" &&
+      step.type !== "end" &&
+      currentOutgoing > 1
+    ) {
+      issues.push(
+        createIssue(
+          "error",
+          "step",
+          "이 단계 유형은 한 번에 하나의 다음 단계만 가질 수 있습니다.",
+          {
+            stepId: step.id,
+          },
+        ),
+      );
+    }
+  });
+
+  if (startSteps.length === 1) {
+    const visited = new Set<string>();
+    const queue = [startSteps[0].id];
+    const adjacency = new Map<string, string[]>();
+
+    validConnections.forEach((connection) => {
+      adjacency.set(connection.sourceStepId, [
+        ...(adjacency.get(connection.sourceStepId) ?? []),
+        connection.targetStepId,
+      ]);
+    });
+
+    while (queue.length > 0) {
+      const currentStepId = queue.shift();
+
+      if (!currentStepId || visited.has(currentStepId)) {
+        continue;
+      }
+
+      visited.add(currentStepId);
+      (adjacency.get(currentStepId) ?? []).forEach((targetStepId) => {
+        if (!visited.has(targetStepId)) {
+          queue.push(targetStepId);
+        }
+      });
+    }
+
+    document.steps.forEach((step) => {
+      if (!visited.has(step.id)) {
+        issues.push(
+          createIssue(
+            "error",
+            "step",
+            "시작 단계에서 도달할 수 없는 단계입니다.",
+            {
+              stepId: step.id,
+            },
+          ),
+        );
       }
     });
   }
 
-  nodes.forEach((node, index) => {
-    if (!levels.has(node.id)) {
-      levels.set(node.id, (levels.get(nodes[index - 1]?.id ?? "") ?? 0) + 1);
+  document.steps.forEach((step) => {
+    const currentIncoming = incoming.get(step.id) ?? 0;
+    const currentOutgoing = outgoing.get(step.id) ?? 0;
+
+    if (document.steps.length > 1 && currentIncoming === 0 && currentOutgoing === 0) {
+      issues.push(
+        createIssue("error", "step", "고립된 단계는 허용되지 않습니다.", {
+          stepId: step.id,
+        }),
+      );
     }
   });
 
-  const laneOrder = Array.from(
-    new Set(nodes.map((node) => node.lane?.trim() || "기본 흐름")),
-  );
-  const groups = new Map<string, FlowchartNode[]>();
+  if (findCycles(validConnections)) {
+    issues.push(
+      createIssue(
+        "warning",
+        "document",
+        "순환 흐름이 감지되었습니다. 결정 분기를 통한 반복이 맞는지 확인해 주세요.",
+      ),
+    );
+  }
 
-  nodes.forEach((node) => {
-    const level = levels.get(node.id) ?? 0;
-    const lane = node.lane?.trim() || "기본 흐름";
-    const key = `${level}:${lane}`;
-    const bucket = groups.get(key) ?? [];
+  return issues;
+}
 
-    bucket.push(node);
-    groups.set(key, bucket);
+export function hasBlockingFlowchartIssues(issues: FlowchartValidationIssue[]) {
+  return issues.some((issue) => issue.severity === "error");
+}
+
+function getRenderableSteps(document: FlowchartDocument) {
+  return document.steps.map((step) => ({
+    ...step,
+    label: step.label.trim() || "이름 없는 단계",
+    lane: document.laneMode ? step.lane?.trim() ?? "" : "",
+    owner: step.owner?.trim() ?? "",
+    notes: step.notes?.trim() ?? "",
+  }));
+}
+
+function createFallbackFlowchartLayout(
+  steps: ReturnType<typeof getRenderableSteps>,
+  connections: FlowchartConnection[],
+  direction: FlowchartDirection,
+): FlowchartLayout {
+  const outgoing = new Map<string, string[]>();
+  const incomingCount = new Map<string, number>();
+
+  steps.forEach((step) => {
+    incomingCount.set(step.id, 0);
   });
 
-  const positionedNodes = nodes.map((node) => {
-    const level = levels.get(node.id) ?? 0;
-    const lane = node.lane?.trim() || "기본 흐름";
-    const laneIndex = laneOrder.indexOf(lane);
-    const key = `${level}:${lane}`;
-    const bucket = (groups.get(key) ?? []).sort((left, right) => left.order - right.order);
-    const rowIndex = bucket.findIndex((candidate) => candidate.id === node.id);
+  connections.forEach((connection) => {
+    outgoing.set(connection.sourceStepId, [
+      ...(outgoing.get(connection.sourceStepId) ?? []),
+      connection.targetStepId,
+    ]);
+    incomingCount.set(
+      connection.targetStepId,
+      (incomingCount.get(connection.targetStepId) ?? 0) + 1,
+    );
+  });
 
-    return {
-      ...node,
-      position: {
-        x: level * 280,
-        y: laneIndex * 220 + Math.max(0, rowIndex) * 132,
-      },
-    };
+  const queue = steps
+    .filter((step) => step.type === "start")
+    .map((step) => step.id);
+
+  if (queue.length === 0 && steps[0]) {
+    queue.push(steps[0].id);
+  }
+
+  const ranks = new Map<string, number>(queue.map((stepId) => [stepId, 0]));
+  const remainingIncoming = new Map(incomingCount);
+  const visited = new Set<string>();
+
+  while (queue.length > 0) {
+    const currentStepId = queue.shift();
+
+    if (!currentStepId || visited.has(currentStepId)) {
+      continue;
+    }
+
+    visited.add(currentStepId);
+    const currentRank = ranks.get(currentStepId) ?? 0;
+
+    (outgoing.get(currentStepId) ?? []).forEach((targetStepId) => {
+      ranks.set(targetStepId, Math.max(ranks.get(targetStepId) ?? 0, currentRank + 1));
+      remainingIncoming.set(
+        targetStepId,
+        Math.max((remainingIncoming.get(targetStepId) ?? 0) - 1, 0),
+      );
+
+      if ((remainingIncoming.get(targetStepId) ?? 0) === 0) {
+        queue.push(targetStepId);
+      }
+    });
+  }
+
+  let fallbackRank = Math.max(0, ...Array.from(ranks.values()));
+
+  steps.forEach((step) => {
+    if (!ranks.has(step.id)) {
+      fallbackRank += 1;
+      ranks.set(step.id, fallbackRank);
+    }
+  });
+
+  const layers = new Map<number, typeof steps>();
+
+  steps.forEach((step) => {
+    const rank = ranks.get(step.id) ?? 0;
+    layers.set(rank, [...(layers.get(rank) ?? []), step]);
+  });
+
+  const orderedLayers = Array.from(layers.entries())
+    .sort(([left], [right]) => left - right)
+    .map(([rank, layer]) => [rank, [...layer].sort((left, right) => left.order - right.order)] as const);
+  const maxLayerSize = Math.max(...orderedLayers.map(([, layer]) => layer.length));
+  const horizontalGap = 96;
+  const verticalGap = 112;
+  const maxNodeWidth = Math.max(...steps.map((step) => flowchartNodeSizes[step.type].width));
+  const maxNodeHeight = Math.max(...steps.map((step) => flowchartNodeSizes[step.type].height));
+  const positions = new Map<string, { x: number; y: number }>();
+
+  orderedLayers.forEach(([rank, layer]) => {
+    const layerOffset = ((maxLayerSize - layer.length) * (maxNodeWidth + horizontalGap)) / 2;
+
+    layer.forEach((step, index) => {
+      if (direction === "LR") {
+        positions.set(step.id, {
+          x: 40 + rank * (maxNodeWidth + 164),
+          y: 40 + layerOffset + index * (maxNodeHeight + verticalGap),
+        });
+        return;
+      }
+
+      positions.set(step.id, {
+        x: 40 + layerOffset + index * (maxNodeWidth + horizontalGap),
+        y: 40 + rank * (maxNodeHeight + 136),
+      });
+    });
   });
 
   return {
-    nodes: positionedNodes,
-    edges,
+    steps: steps.map((step) => ({
+      ...step,
+      position: positions.get(step.id) ?? { x: 40, y: 40 },
+      size: flowchartNodeSizes[step.type],
+    })),
+    connections,
   };
+}
+
+export function getFallbackFlowchartLayout(
+  document: FlowchartDocument,
+): FlowchartLayout {
+  const steps = getRenderableSteps(document);
+  const connections = getRenderableFlowchartConnections(document);
+
+  if (steps.length === 0) {
+    return {
+      steps: [],
+      connections: [],
+    };
+  }
+
+  return createFallbackFlowchartLayout(steps, connections, document.direction);
+}
+
+export async function layoutFlowchartDocument(
+  document: FlowchartDocument,
+): Promise<FlowchartLayout> {
+  const steps = getRenderableSteps(document);
+  const connections = getRenderableFlowchartConnections(document);
+
+  if (steps.length === 0) {
+    return {
+      steps: [],
+      connections: [],
+    };
+  }
+
+  const graph: ElkNode = {
+    id: "flowchart-root",
+    layoutOptions: {
+      "elk.algorithm": "layered",
+      "elk.direction": document.direction === "LR" ? "RIGHT" : "DOWN",
+      "elk.edgeRouting": "ORTHOGONAL",
+      "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
+      "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
+      "elk.layered.spacing.edgeNodeBetweenLayers": "36",
+      "elk.layered.spacing.nodeNodeBetweenLayers": "92",
+      "elk.spacing.edgeNode": "28",
+      "elk.spacing.nodeNode": "36",
+    },
+    children: steps.map((step) => ({
+      id: step.id,
+      width: flowchartNodeSizes[step.type].width,
+      height: flowchartNodeSizes[step.type].height,
+    })),
+    edges: connections.map<ElkExtendedEdge>((connection) => ({
+      id: connection.id,
+      sources: [connection.sourceStepId],
+      targets: [connection.targetStepId],
+    })),
+  };
+
+  try {
+    const layout = await Promise.race<ElkNode>([
+      elk.layout(graph),
+      new Promise<ElkNode>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error("ELK layout timed out"));
+        }, 400);
+      }),
+    ]);
+    const positions = new Map(
+      (layout.children ?? []).map((child) => [
+        child.id,
+        {
+          x: child.x ?? 0,
+          y: child.y ?? 0,
+        },
+      ]),
+    );
+
+    return {
+      steps: steps.map((step) => ({
+        ...step,
+        position: {
+          x: (positions.get(step.id)?.x ?? 0) + 28,
+          y: (positions.get(step.id)?.y ?? 0) + 28,
+        },
+        size: flowchartNodeSizes[step.type],
+      })),
+      connections,
+    };
+  } catch {
+    return createFallbackFlowchartLayout(steps, connections, document.direction);
+  }
 }

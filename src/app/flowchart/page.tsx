@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { FlowchartEditorShell } from "@/components/flowchart/FlowchartEditorShell";
 
 export const metadata: Metadata = {
-  title: "플로우차트 | Office Tool",
-  description: "문서용 플로우차트 편집기",
+  title: "플로우차트 | DataViz Studio",
+  description: "표준 기호와 조건 분기로 업무 흐름을 설계하는 플로우차트 작성기",
 };
 
 export default function FlowchartPage() {
@@ -14,11 +14,12 @@ export default function FlowchartPage() {
         <Link href="/" className="back-link">
           홈 허브로 돌아가기
         </Link>
-        <div className="eyebrow">플로우차트 에디터</div>
+        <div className="eyebrow">플로우차트 작성기</div>
         <h1 id="flowchart-title">플로우차트</h1>
         <p>
-          단계, 분기, 연결을 한 화면에서 관리하고 문서/PPT에 붙이기 좋은
-          플로우차트를 이미지로 내보냅니다.
+          시작, 처리, 결정, 문서, 데이터, 서브프로세스, 종료 기호를 조합해 실제
+          업무 흐름을 정의합니다. 조건 분기와 방향을 입력하면 표준 형태의 차트로
+          즉시 정리됩니다.
         </p>
       </section>
 

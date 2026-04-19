@@ -18,7 +18,7 @@
 - Dropped: ?섏? ?딄린濡???
 ## ?꾩옱 ?ㅼ쓬 ?≪뀡
 
-- `/pose` 2D human 기본 캐릭터를 문서/콘티에 바로 쓸 수 있는 만화형 paper-doll 렌더러 수준으로 끌어올리고, 스타일 선택 구조를 마무리한다.
+- 포즈 메이커 2D 사람형 품질 상향 작업을 이어가고, 플로우차트 작성기 후속 UX 조정은 실제 사용 피드백이 모이면 반영한다.
 
 ## ?묒뾽 ??
 | ?쒖꽌 | ID       | ?묒뾽                             | ?곹깭     | 紐⑹쟻                                                                                                                              | ?꾨즺 湲곗?                                                                                                                                                                                            | ?섏〈??                   |
@@ -54,6 +54,7 @@
 | 29   | PLAN-029 | 포즈 메이커 Open Peeps rig 팩 온보딩 | Done | Open Peeps를 우선 소스로 삼아 첫 same-origin segmented rig pack을 만들고, `/pose` 2D human selector에서 실제 외부 스타일 pack을 선택할 수 있게 연결한다. | Open Peeps 기반 first segmented rig asset이 `public/assets/pose/2d/human/...`에 추가되고, manifest/rig 정의가 갱신되며, `/pose` 2D human 모드에서 built-in 외에 실제 segmented asset 1종 이상을 선택해 포즈 편집/PNG export/JSON 흐름이 유지되고, lint/typecheck/test/build가 통과한다. | PLAN-028                  |
 | 30   | PLAN-030 | 포즈 메이커 2D 사람형 품질 상향      | In Progress | `/pose` 2D human 기본 캐릭터를 디버그용 마네킹 수준에서 벗어나, 문서/콘티에 바로 쓸 수 있는 만화형 paper-doll 렌더러와 3종 이상 스타일 선택 구조로 끌어올린다. | 기본 asset이 팔/다리/몸통/머리 연결이 자연스러운 사람형 캐릭터로 보이고, 최소 3종 이상 스타일이 같은 관절 편집 UX를 유지하며, skeleton은 overlay 옵션으로만 남고, lint/typecheck/test/build가 통과한다. | PLAN-027, PLAN-029        |
 | 31   | PLAN-031 | 홈 허브 리디자인 및 브랜드 변경      | Done | 홈 화면을 대표 기능 중심의 product hub로 재구성하고, 제품명을 `DataViz Studio`로 교체해 기능 이해도와 첫인상을 함께 개선한다. | 홈에서 대표 기능만 선택 가능하게 보이고, 각 카드가 무엇을 만드는 도구인지 미리보기/설명으로 바로 이해되며, 상단 브랜드/메타데이터/홈 카피가 `DataViz Studio` 기준으로 정리되고 lint/typecheck/test/build가 유지된다. | PLAN-020                  |
+| 32   | PLAN-032 | 플로우차트 작성기 재정의 및 입력 모델 개편 | Done | 현재 플로우차트 도구를 표준 플로우차트 기호와 분기 의미를 갖는 작성기로 재정의하고, 노드/분기 중심 입력 모델과 구현 방향을 다시 잠근다. | 기능 요구사항, 오픈소스 비교, 사용자 입력값/내부 모델/validation/preview/export 기준이 문서로 정리되고, 이후 구현 단계를 바로 착수할 수 있는 수준으로 명확해진다. | PLAN-020, PLAN-022        |
 
 ## ?댁쁺 洹쒖튃
 

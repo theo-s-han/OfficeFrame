@@ -1,160 +1,153 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { ColorPickerDialog } from "@/components/shared/ColorPickerDialog";
+import { useMemo, useRef, useState, type SetStateAction } from "react";
 import {
-  defaultGanttTaskColor,
-  ganttTaskColorOptions,
-  isValidGanttTaskColor,
-  normalizeGanttTaskColor,
-} from "@/lib/gantt/taskModel";
-import {
-  addFlowchartEdge,
-  addFlowchartNode,
-  createSampleFlowchartState,
+  addFlowchartBranch,
+  addFlowchartStep,
+  createEmptyFlowchartDocument,
+  createSampleFlowchartDocument,
+  flowchartDirectionOptions,
   flowchartNodeTypeOptions,
-  flowchartStatusOptions,
-  getFlowchartNodeOptions,
-  removeFlowchartEdge,
-  removeFlowchartNode,
-  updateFlowchartEdge,
-  updateFlowchartNode,
-  validateFlowchartState,
+  getFlowchartConnections,
+  getFlowchartStepOptions,
+  hasBlockingFlowchartIssues,
+  removeFlowchartBranch,
+  removeFlowchartStep,
+  updateFlowchartBranch,
+  updateFlowchartStep,
+  validateFlowchartDocument,
+  type FlowchartDocument,
+  type FlowchartNodeType,
 } from "@/lib/flowchart/model";
-import { readFlowchartDebugEnabled, recordFlowchartDebugEvent } from "@/lib/flowchart/debug";
+import {
+  readFlowchartDebugEnabled,
+  recordFlowchartDebugEvent,
+} from "@/lib/flowchart/debug";
 import { exportFlowchartPreviewImage } from "@/lib/flowchart/export";
-import { createDatedPngFileName, downloadDataUrl } from "@/lib/shared/download";
+import {
+  createDatedPngFileName,
+  downloadDataUrl,
+} from "@/lib/shared/download";
 import { FlowchartPreview } from "./FlowchartPreview";
 
-const initialState = createSampleFlowchartState();
+const initialDocument = createSampleFlowchartDocument();
 
 export function FlowchartEditorShell() {
-  const [title, setTitle] = useState(initialState.title);
-  const [nodes, setNodes] = useState(initialState.nodes);
-  const [edges, setEdges] = useState(initialState.edges);
-  const [selectedNodeId, setSelectedNodeId] = useState(initialState.selectedNodeId);
+  const [document, setDocument] = useState(initialDocument);
+  const [selectedStepId, setSelectedStepId] = useState<string | undefined>(
+    initialDocument.steps[0]?.id,
+  );
   const [exportStatus, setExportStatus] = useState("");
-  const [colorDialogNodeId, setColorDialogNodeId] = useState<string | null>(null);
-  const [draftColor, setDraftColor] = useState(defaultGanttTaskColor);
   const debugEnabled = useState(() => readFlowchartDebugEnabled())[0];
   const previewRef = useRef<HTMLDivElement>(null);
-  const issues = useMemo(
-    () =>
-      validateFlowchartState({
-        title,
-        nodes,
-        edges,
-        selectedNodeId,
-      }),
-    [edges, nodes, selectedNodeId, title],
+
+  const issues = useMemo(() => validateFlowchartDocument(document), [document]);
+  const blockingIssues = issues.filter((issue) => issue.severity === "error");
+  const warningIssues = issues.filter((issue) => issue.severity === "warning");
+  const connectionCount = useMemo(
+    () => getFlowchartConnections(document).length,
+    [document],
   );
-  const colorDialogNode = nodes.find((node) => node.id === colorDialogNodeId);
-  const previewDraftColor = normalizeGanttTaskColor(draftColor);
-  const canApplyDraftColor = isValidGanttTaskColor(previewDraftColor);
-  const canExport = nodes.length > 0 && issues.length === 0;
+  const canExport =
+    document.steps.length > 0 && !hasBlockingFlowchartIssues(issues);
 
-  const nodeIssues = useMemo(() => {
+  const stepIssues = useMemo(() => {
     const map = new Map<string, string[]>();
 
     issues
-      .filter((issue) => issue.nodeId)
+      .filter((issue) => issue.stepId && issue.field !== "branch")
       .forEach((issue) => {
-        const bucket = map.get(issue.nodeId as string) ?? [];
+        const bucket = map.get(issue.stepId as string) ?? [];
 
         bucket.push(issue.message);
-        map.set(issue.nodeId as string, bucket);
+        map.set(issue.stepId as string, bucket);
       });
 
     return map;
   }, [issues]);
 
-  const edgeIssues = useMemo(() => {
+  const branchIssues = useMemo(() => {
     const map = new Map<string, string[]>();
 
     issues
-      .filter((issue) => issue.edgeId)
+      .filter((issue) => issue.stepId && issue.branchId)
       .forEach((issue) => {
-        const bucket = map.get(issue.edgeId as string) ?? [];
+        const key = `${issue.stepId}:${issue.branchId}`;
+        const bucket = map.get(key) ?? [];
 
         bucket.push(issue.message);
-        map.set(issue.edgeId as string, bucket);
+        map.set(key, bucket);
       });
 
     return map;
   }, [issues]);
+
+  function updateCurrentDocument(updater: SetStateAction<FlowchartDocument>) {
+    setDocument(updater);
+  }
 
   function handleResetSample() {
-    const nextState = createSampleFlowchartState();
+    const nextDocument = createSampleFlowchartDocument();
 
-    setTitle(nextState.title);
-    setNodes(nextState.nodes);
-    setEdges(nextState.edges);
-    setSelectedNodeId(nextState.selectedNodeId);
+    setDocument(nextDocument);
+    setSelectedStepId(nextDocument.steps[0]?.id);
     setExportStatus("");
-    recordFlowchartDebugEvent("sample.reset", nextState, debugEnabled);
+    recordFlowchartDebugEvent("sample.reset", nextDocument, debugEnabled);
   }
 
   function handleClear() {
-    setTitle("새 플로우차트");
-    setNodes([]);
-    setEdges([]);
-    setSelectedNodeId(undefined);
+    const nextDocument = createEmptyFlowchartDocument();
+
+    setDocument(nextDocument);
+    setSelectedStepId(undefined);
     setExportStatus("");
     recordFlowchartDebugEvent("flowchart.clear", {}, debugEnabled);
   }
 
-  function handleAddNode() {
-    const nextNodes = addFlowchartNode(nodes);
-    const nextNodeId = nextNodes[nextNodes.length - 1]?.id;
+  function handleAddStep() {
+    updateCurrentDocument((currentDocument) => {
+      const nextSteps = addFlowchartStep(currentDocument.steps);
+      const nextSelectedStepId = nextSteps[nextSteps.length - 1]?.id;
 
-    setNodes(nextNodes);
-    setSelectedNodeId(nextNodeId);
-    recordFlowchartDebugEvent("node.add", { nodeId: nextNodeId }, debugEnabled);
+      setSelectedStepId(nextSelectedStepId);
+      recordFlowchartDebugEvent(
+        "step.add",
+        { stepId: nextSelectedStepId },
+        debugEnabled,
+      );
+
+      return {
+        ...currentDocument,
+        steps: nextSteps,
+      };
+    });
   }
 
-  function handleRemoveNode(nodeId: string) {
-    const nextState = removeFlowchartNode(nodes, edges, nodeId);
+  function handleRemoveStep(stepId: string) {
+    updateCurrentDocument((currentDocument) => {
+      const nextSteps = removeFlowchartStep(currentDocument.steps, stepId);
 
-    setNodes(nextState.nodes);
-    setEdges(nextState.edges);
-    setSelectedNodeId(nextState.nodes[0]?.id);
-    recordFlowchartDebugEvent("node.remove", { nodeId }, debugEnabled);
+      setSelectedStepId(nextSteps[0]?.id);
+      recordFlowchartDebugEvent("step.remove", { stepId }, debugEnabled);
+
+      return {
+        ...currentDocument,
+        steps: nextSteps,
+      };
+    });
   }
 
-  function handleAddEdge() {
-    const nextEdges = addFlowchartEdge(nodes, edges);
+  function handleAddBranch(stepId: string) {
+    updateCurrentDocument((currentDocument) => {
+      const nextSteps = addFlowchartBranch(currentDocument.steps, stepId);
 
-    setEdges(nextEdges);
-    recordFlowchartDebugEvent(
-      "edge.add",
-      { edgeId: nextEdges[nextEdges.length - 1]?.id },
-      debugEnabled,
-    );
-  }
+      recordFlowchartDebugEvent("branch.add", { stepId }, debugEnabled);
 
-  function openColorPicker(nodeId: string) {
-    const node = nodes.find((candidate) => candidate.id === nodeId);
-
-    setColorDialogNodeId(nodeId);
-    setDraftColor(node?.color ?? defaultGanttTaskColor);
-  }
-
-  function closeColorPicker() {
-    setColorDialogNodeId(null);
-    setDraftColor(defaultGanttTaskColor);
-  }
-
-  function applyDraftColor() {
-    if (!colorDialogNode || !canApplyDraftColor) {
-      return;
-    }
-
-    setNodes((currentNodes) =>
-      updateFlowchartNode(currentNodes, colorDialogNode.id, {
-        color: previewDraftColor,
-      }),
-    );
-    closeColorPicker();
+      return {
+        ...currentDocument,
+        steps: nextSteps,
+      };
+    });
   }
 
   async function handleExportImage() {
@@ -162,18 +155,18 @@ export function FlowchartEditorShell() {
       return;
     }
 
-    setExportStatus("플로우차트 이미지를 준비하는 중입니다.");
+    setExportStatus("플로우차트 이미지를 준비하고 있습니다.");
 
     try {
       const dataUrl = await exportFlowchartPreviewImage(previewRef.current);
 
-      downloadDataUrl(dataUrl, createDatedPngFileName("office-tool-flowchart"));
+      downloadDataUrl(dataUrl, createDatedPngFileName("dataviz-studio-flowchart"));
       setExportStatus("플로우차트 이미지를 내보냈습니다.");
       recordFlowchartDebugEvent(
         "flowchart.export",
         {
-          nodeCount: nodes.length,
-          edgeCount: edges.length,
+          stepCount: document.steps.length,
+          connectionCount,
         },
         debugEnabled,
       );
@@ -191,344 +184,437 @@ export function FlowchartEditorShell() {
   }
 
   return (
-    <section className="diagram-editor-shell" aria-label="플로우차트 에디터">
-      <div className="action-bar" aria-label="플로우차트 toolbar">
+    <section className="diagram-editor-shell" aria-label="플로우차트 편집기">
+      <div className="action-bar" aria-label="플로우차트 도구 모음">
         <button type="button" onClick={handleResetSample}>
-          예시 데이터
+          예시 불러오기
         </button>
         <button type="button" onClick={handleClear}>
           전체 초기화
         </button>
         <button disabled={!canExport} type="button" onClick={handleExportImage}>
-          이미지로 내보내기
+          PNG로 내보내기
         </button>
       </div>
 
       <div className="diagram-layout">
-        <section className="diagram-edit-panel" aria-labelledby="flowchart-editor-title">
+        <section
+          className="diagram-edit-panel"
+          aria-labelledby="flowchart-editor-title"
+        >
           <div className="panel-kicker">입력</div>
-          <h2 id="flowchart-editor-title">플로우차트 입력</h2>
-          <p>단계와 연결을 따로 관리해 분기와 종료 조건을 안정적으로 입력합니다.</p>
+          <h2 id="flowchart-editor-title">플로우차트 구성</h2>
+          <p>
+            단계 종류와 연결 방향을 먼저 정의하고, 조건 분기는 결정 노드에서만
+            설정합니다. 표준 플로우차트 규칙에 맞게 시작, 처리, 결정, 문서, 데이터,
+            서브프로세스, 종료를 조합할 수 있습니다.
+          </p>
 
-          <div className="diagram-meta-grid">
+          <div className="diagram-meta-grid flowchart-meta-grid">
             <label>
-              <span>플로우차트명</span>
+              <span>차트 이름</span>
               <input
-                aria-label="플로우차트명"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
+                aria-label="플로우차트 이름"
+                value={document.title}
+                onChange={(event) =>
+                  updateCurrentDocument((currentDocument) => ({
+                    ...currentDocument,
+                    title: event.target.value,
+                  }))
+                }
               />
+            </label>
+            <label>
+              <span>방향</span>
+              <select
+                aria-label="플로우차트 방향"
+                value={document.direction}
+                onChange={(event) =>
+                  updateCurrentDocument((currentDocument) => ({
+                    ...currentDocument,
+                    direction: event.target.value as FlowchartDocument["direction"],
+                  }))
+                }
+              >
+                {flowchartDirectionOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </label>
           </div>
 
-          {issues.length > 0 ? (
+          <label className="flowchart-toggle-row">
+            <input
+              checked={document.laneMode}
+              type="checkbox"
+              onChange={(event) =>
+                updateCurrentDocument((currentDocument) => ({
+                  ...currentDocument,
+                  laneMode: event.target.checked,
+                }))
+              }
+            />
+            <span>레인 정보 함께 입력</span>
+          </label>
+
+          {blockingIssues.length > 0 ? (
             <div className="validation-summary" role="alert">
-              {issues.length}개의 입력 오류가 있습니다. 시작/종료/연결 조건을 확인해 주세요.
+              {blockingIssues.length}개의 오류가 있습니다. 시작 단계, 종료 단계,
+              결정 분기 수, 도달 가능성을 먼저 확인해 주세요.
+            </div>
+          ) : null}
+
+          {warningIssues.length > 0 ? (
+            <div className="empty-state flowchart-warning-summary" role="status">
+              {warningIssues.map((issue) => issue.message).join(" ")}
             </div>
           ) : null}
 
           <div className="diagram-section-heading">
             <h3>단계</h3>
-            <button className="primary-action" type="button" onClick={handleAddNode}>
+            <button className="primary-action" type="button" onClick={handleAddStep}>
               단계 추가
             </button>
           </div>
 
-          {nodes.length === 0 ? (
-            <div className="empty-state">단계를 추가하면 플로우차트가 시작됩니다.</div>
+          {document.steps.length === 0 ? (
+            <div className="empty-state">
+              단계를 추가하면 시작부터 종료까지의 플로우를 직접 구성할 수 있습니다.
+            </div>
           ) : (
-            <div className="diagram-item-list" aria-label="단계 목록">
-              {nodes.map((node) => (
-                <div
-                  aria-selected={selectedNodeId === node.id}
-                  className={
-                    selectedNodeId === node.id
-                      ? "diagram-item-card selected"
-                      : "diagram-item-card"
-                  }
-                  key={node.id}
-                  onClick={() => setSelectedNodeId(node.id)}
-                >
-                  <div className="diagram-item-grid">
-                    <label>
-                      <span>단계명</span>
-                      <input
-                        aria-label={`${node.name} 단계명`}
-                        value={node.name}
-                        onChange={(event) =>
-                          setNodes((currentNodes) =>
-                            updateFlowchartNode(currentNodes, node.id, {
-                              name: event.target.value,
-                            }),
-                          )
+            <div className="diagram-item-list" aria-label="플로우차트 단계 목록">
+              {document.steps.map((step) => {
+                const isDecision = step.type === "decision";
+                const isEnd = step.type === "end";
+                const branchKeyPrefix = `${step.id}:`;
+
+                return (
+                  <div
+                    aria-selected={selectedStepId === step.id}
+                    className={
+                      selectedStepId === step.id
+                        ? "diagram-item-card selected"
+                        : "diagram-item-card"
+                    }
+                    key={step.id}
+                    onClick={() => setSelectedStepId(step.id)}
+                  >
+                    <div className="diagram-item-grid">
+                      <label>
+                        <span>단계명</span>
+                        <input
+                          aria-label={`${step.label || "단계"} 단계명`}
+                          value={step.label}
+                          onChange={(event) =>
+                            updateCurrentDocument((currentDocument) => ({
+                              ...currentDocument,
+                              steps: updateFlowchartStep(
+                                currentDocument.steps,
+                                step.id,
+                                {
+                                  label: event.target.value,
+                                },
+                              ),
+                            }))
+                          }
+                        />
+                      </label>
+
+                      <label>
+                        <span>단계 유형</span>
+                        <select
+                          aria-label={`${step.label || "단계"} 단계 유형`}
+                          value={step.type}
+                          onChange={(event) =>
+                            updateCurrentDocument((currentDocument) => ({
+                              ...currentDocument,
+                              steps: updateFlowchartStep(
+                                currentDocument.steps,
+                                step.id,
+                                {
+                                  type: event.target.value as FlowchartNodeType,
+                                },
+                              ),
+                            }))
+                          }
+                        >
+                          {flowchartNodeTypeOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      {document.laneMode ? (
+                        <label>
+                          <span>레인</span>
+                          <input
+                            aria-label={`${step.label || "단계"} 레인`}
+                            value={step.lane ?? ""}
+                            onChange={(event) =>
+                              updateCurrentDocument((currentDocument) => ({
+                                ...currentDocument,
+                                steps: updateFlowchartStep(
+                                  currentDocument.steps,
+                                  step.id,
+                                  {
+                                    lane: event.target.value,
+                                  },
+                                ),
+                              }))
+                            }
+                          />
+                        </label>
+                      ) : null}
+
+                      <label>
+                        <span>담당</span>
+                        <input
+                          aria-label={`${step.label || "단계"} 담당`}
+                          value={step.owner ?? ""}
+                          onChange={(event) =>
+                            updateCurrentDocument((currentDocument) => ({
+                              ...currentDocument,
+                              steps: updateFlowchartStep(
+                                currentDocument.steps,
+                                step.id,
+                                {
+                                  owner: event.target.value,
+                                },
+                              ),
+                            }))
+                          }
+                        />
+                      </label>
+
+                      {!isDecision && !isEnd ? (
+                        <label>
+                          <span>다음 단계</span>
+                          <select
+                            aria-label={`${step.label || "단계"} 다음 단계`}
+                            value={step.nextStepId ?? ""}
+                            onChange={(event) =>
+                              updateCurrentDocument((currentDocument) => ({
+                                ...currentDocument,
+                                steps: updateFlowchartStep(
+                                  currentDocument.steps,
+                                  step.id,
+                                  {
+                                    nextStepId: event.target.value,
+                                  },
+                                ),
+                              }))
+                            }
+                          >
+                            <option value="">선택</option>
+                            {getFlowchartStepOptions(document.steps, step.id).map(
+                              (option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ),
+                            )}
+                          </select>
+                        </label>
+                      ) : null}
+
+                      <label className="wide-field">
+                        <span>설명</span>
+                        <textarea
+                          aria-label={`${step.label || "단계"} 설명`}
+                          value={step.notes ?? ""}
+                          onChange={(event) =>
+                            updateCurrentDocument((currentDocument) => ({
+                              ...currentDocument,
+                              steps: updateFlowchartStep(
+                                currentDocument.steps,
+                                step.id,
+                                {
+                                  notes: event.target.value,
+                                },
+                              ),
+                            }))
+                          }
+                        />
+                      </label>
+                    </div>
+
+                    {isDecision ? (
+                      <div className="flowchart-branch-section">
+                        <div className="diagram-section-heading flowchart-branch-heading">
+                          <h3>분기</h3>
+                          <button
+                            className="primary-action"
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleAddBranch(step.id);
+                            }}
+                          >
+                            분기 추가
+                          </button>
+                        </div>
+
+                        <div className="flowchart-branch-list">
+                          {step.branches.map((branch) => (
+                            <div className="flowchart-branch-card" key={branch.id}>
+                              <div className="flowchart-branch-grid">
+                                <label>
+                                  <span>분기 라벨</span>
+                                  <input
+                                    aria-label={`${step.label || "결정 단계"} 분기 라벨`}
+                                    placeholder="예 / 아니오"
+                                    value={branch.label}
+                                    onChange={(event) =>
+                                      updateCurrentDocument((currentDocument) => ({
+                                        ...currentDocument,
+                                        steps: updateFlowchartBranch(
+                                          currentDocument.steps,
+                                          step.id,
+                                          branch.id,
+                                          {
+                                            label: event.target.value,
+                                          },
+                                        ),
+                                      }))
+                                    }
+                                  />
+                                </label>
+
+                                <label>
+                                  <span>대상 단계</span>
+                                  <select
+                                    aria-label={`${step.label || "결정 단계"} 분기 대상 단계`}
+                                    value={branch.targetStepId}
+                                    onChange={(event) =>
+                                      updateCurrentDocument((currentDocument) => ({
+                                        ...currentDocument,
+                                        steps: updateFlowchartBranch(
+                                          currentDocument.steps,
+                                          step.id,
+                                          branch.id,
+                                          {
+                                            targetStepId: event.target.value,
+                                          },
+                                        ),
+                                      }))
+                                    }
+                                  >
+                                    <option value="">선택</option>
+                                    {getFlowchartStepOptions(
+                                      document.steps,
+                                      step.id,
+                                    ).map((option) => (
+                                      <option key={option.value} value={option.value}>
+                                        {option.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    updateCurrentDocument((currentDocument) => ({
+                                      ...currentDocument,
+                                      steps: removeFlowchartBranch(
+                                        currentDocument.steps,
+                                        step.id,
+                                        branch.id,
+                                      ),
+                                    }));
+                                  }}
+                                >
+                                  분기 삭제
+                                </button>
+                              </div>
+
+                              {(branchIssues.get(
+                                `${branchKeyPrefix}${branch.id}`,
+                              ) ?? []).map((message) => (
+                                <p
+                                  className="field-error"
+                                  key={`${branch.id}-${message}`}
+                                  role="alert"
+                                >
+                                  {message}
+                                </p>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <div className="diagram-item-footer">
+                      <span className="diagram-item-chip">
+                        {
+                          flowchartNodeTypeOptions.find(
+                            (option) => option.value === step.type,
+                          )?.label
                         }
-                      />
-                    </label>
-                    <label>
-                      <span>단계 유형</span>
-                      <select
-                        aria-label={`${node.name} 단계 유형`}
-                        value={node.type}
-                        onChange={(event) =>
-                          setNodes((currentNodes) =>
-                            updateFlowchartNode(currentNodes, node.id, {
-                              type: event.target.value as typeof node.type,
-                            }),
-                          )
-                        }
-                      >
-                        {flowchartNodeTypeOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      <span>그룹</span>
-                      <input
-                        aria-label={`${node.name} 그룹`}
-                        value={node.lane ?? ""}
-                        onChange={(event) =>
-                          setNodes((currentNodes) =>
-                            updateFlowchartNode(currentNodes, node.id, {
-                              lane: event.target.value,
-                            }),
-                          )
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>상태</span>
-                      <select
-                        aria-label={`${node.name} 상태`}
-                        value={node.status ?? "default"}
-                        onChange={(event) =>
-                          setNodes((currentNodes) =>
-                            updateFlowchartNode(currentNodes, node.id, {
-                              status: event.target.value as typeof node.status,
-                            }),
-                          )
-                        }
-                      >
-                        {flowchartStatusOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      <span>담당자</span>
-                      <input
-                        aria-label={`${node.name} 담당자`}
-                        value={node.owner ?? ""}
-                        onChange={(event) =>
-                          setNodes((currentNodes) =>
-                            updateFlowchartNode(currentNodes, node.id, {
-                              owner: event.target.value,
-                            }),
-                          )
-                        }
-                      />
-                    </label>
-                    <label className="color-picker-field">
-                      <span>색상</span>
+                      </span>
                       <button
-                        className="color-picker-trigger"
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation();
-                          openColorPicker(node.id);
+                          handleRemoveStep(step.id);
                         }}
                       >
-                        <span
-                          className="color-swatch"
-                          style={{ backgroundColor: normalizeGanttTaskColor(node.color) }}
-                        />
-                        <span>{normalizeGanttTaskColor(node.color)}</span>
+                        단계 삭제
                       </button>
-                    </label>
-                    <label className="wide-field">
-                      <span>설명</span>
-                      <textarea
-                        aria-label={`${node.name} 설명`}
-                        value={node.notes ?? ""}
-                        onChange={(event) =>
-                          setNodes((currentNodes) =>
-                            updateFlowchartNode(currentNodes, node.id, {
-                              notes: event.target.value,
-                            }),
-                          )
-                        }
-                      />
-                    </label>
-                  </div>
+                    </div>
 
-                  <div className="diagram-item-footer">
-                    <span className="diagram-item-chip">
-                      {
-                        flowchartNodeTypeOptions.find(
-                          (option) => option.value === node.type,
-                        )?.label
-                      }
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleRemoveNode(node.id);
-                      }}
-                    >
-                      삭제
-                    </button>
+                    {(stepIssues.get(step.id) ?? []).map((message) => (
+                      <p className="field-error" key={`${step.id}-${message}`} role="alert">
+                        {message}
+                      </p>
+                    ))}
                   </div>
-
-                  {(nodeIssues.get(node.id) ?? []).map((message) => (
-                    <p className="field-error" key={`${node.id}-${message}`} role="alert">
-                      {message}
-                    </p>
-                  ))}
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="diagram-section-heading top-spaced">
-            <h3>연결</h3>
-            <button
-              className="primary-action"
-              disabled={nodes.length < 2}
-              type="button"
-              onClick={handleAddEdge}
-            >
-              연결 추가
-            </button>
-          </div>
-
-          {edges.length === 0 ? (
-            <div className="empty-state">연결을 추가하면 분기와 흐름이 표시됩니다.</div>
-          ) : (
-            <div className="diagram-item-list" aria-label="연결 목록">
-              {edges.map((edge) => (
-                <div className="diagram-item-card compact" key={edge.id}>
-                  <div className="diagram-item-grid compact">
-                    <label>
-                      <span>출발 단계</span>
-                      <select
-                        aria-label={`${edge.id} 출발 단계`}
-                        value={edge.sourceId}
-                        onChange={(event) =>
-                          setEdges((currentEdges) =>
-                            updateFlowchartEdge(currentEdges, edge.id, {
-                              sourceId: event.target.value,
-                            }),
-                          )
-                        }
-                      >
-                        {getFlowchartNodeOptions(nodes, edge.targetId).map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      <span>도착 단계</span>
-                      <select
-                        aria-label={`${edge.id} 도착 단계`}
-                        value={edge.targetId}
-                        onChange={(event) =>
-                          setEdges((currentEdges) =>
-                            updateFlowchartEdge(currentEdges, edge.id, {
-                              targetId: event.target.value,
-                            }),
-                          )
-                        }
-                      >
-                        {getFlowchartNodeOptions(nodes, edge.sourceId).map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      <span>조건 라벨</span>
-                      <input
-                        aria-label={`${edge.id} 조건 라벨`}
-                        placeholder="예 / 아니오"
-                        value={edge.label ?? ""}
-                        onChange={(event) =>
-                          setEdges((currentEdges) =>
-                            updateFlowchartEdge(currentEdges, edge.id, {
-                              label: event.target.value,
-                            }),
-                          )
-                        }
-                      />
-                    </label>
-                  </div>
-                  <div className="diagram-item-footer">
-                    <span className="diagram-item-chip">연결</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setEdges((currentEdges) =>
-                          removeFlowchartEdge(currentEdges, edge.id),
-                        )
-                      }
-                    >
-                      삭제
-                    </button>
-                  </div>
-                  {(edgeIssues.get(edge.id) ?? []).map((message) => (
-                    <p className="field-error" key={`${edge.id}-${message}`} role="alert">
-                      {message}
-                    </p>
-                  ))}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
 
-        <section className="diagram-preview-panel" aria-labelledby="flowchart-preview-title">
+        <section
+          className="diagram-preview-panel"
+          aria-labelledby="flowchart-preview-title"
+        >
           <div className="panel-kicker">미리보기</div>
-          <h2 id="flowchart-preview-title">플로우차트 preview</h2>
-          <p>단계와 연결을 한 화면에서 확인하고, 문서용 이미지로 바로 저장합니다.</p>
+          <h2 id="flowchart-preview-title">실시간 플로우차트</h2>
+          <p>
+            표준 기호와 분기 라벨이 반영된 결과를 바로 확인하고, 같은 화면에서 PNG로
+            내보낼 수 있습니다.
+          </p>
 
           <div className="diagram-preview-surface" ref={previewRef}>
             <FlowchartPreview
-              selectedNodeId={selectedNodeId}
-              state={{ title, nodes, edges, selectedNodeId }}
-              onSelectNode={setSelectedNodeId}
+              document={document}
+              selectedStepId={selectedStepId}
+              onSelectStep={setSelectedStepId}
             />
           </div>
 
           <div className="preview-meta" aria-live="polite">
-            <span>{nodes.length}개 단계</span>
-            <span>{edges.length}개 연결</span>
-            <span>{title}</span>
+            <span>{document.steps.length}개 단계</span>
+            <span>{connectionCount}개 연결</span>
+            <span>
+              {
+                flowchartDirectionOptions.find(
+                  (option) => option.value === document.direction,
+                )?.label
+              }
+            </span>
           </div>
+
           {exportStatus ? <p className="export-status">{exportStatus}</p> : null}
         </section>
       </div>
-
-      {colorDialogNode ? (
-        <ColorPickerDialog
-          canApply={canApplyDraftColor}
-          currentColor={previewDraftColor}
-          draftColor={draftColor}
-          helpText="프리셋에서 고르거나 직접 색상과 HEX 값을 지정합니다."
-          invalidMessage="#RRGGBB 형식의 색상을 입력해 주세요."
-          options={ganttTaskColorOptions}
-          title={`${colorDialogNode.name} 색상 선택`}
-          onApply={applyDraftColor}
-          onClose={closeColorPicker}
-          onDraftColorChange={setDraftColor}
-        />
-      ) : null}
     </section>
   );
 }
