@@ -1,68 +1,39 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  exportMindmapPreviewImage,
-  getMindmapExportElement,
-  getMindmapExportSize,
-} from "./export";
-
-function createSizedElement(width: number, height: number, className?: string) {
-  const element = document.createElement("div");
-
-  if (className) {
-    element.className = className;
-  }
-
-  Object.defineProperty(element, "getBoundingClientRect", {
-    value: () => ({
-      width,
-      height,
-      left: 0,
-      top: 0,
-      right: width,
-      bottom: height,
-    }),
-  });
-
-  return element;
-}
+import { blobToDataUrl, exportMindmapPreviewImage } from "./export";
 
 describe("mindmap export", () => {
-  it("targets the rendered map canvas when available", () => {
-    const source = document.createElement("div");
-    const canvas = createSizedElement(720, 480, "map-canvas");
-
-    source.appendChild(canvas);
-
-    expect(getMindmapExportElement(source)).toBe(canvas);
-  });
-
-  it("reads export dimensions from the visible chart bounds", () => {
-    const element = createSizedElement(640.2, 382.4);
-
-    expect(getMindmapExportSize(element)).toEqual({
-      width: 641,
-      height: 383,
-    });
-  });
-
-  it("passes preview bounds to the image renderer", async () => {
-    const source = document.createElement("div");
-    const canvas = createSizedElement(680, 420, "map-canvas");
-    const toPngImpl = vi.fn().mockResolvedValue("data:image/png;base64,test");
-
-    source.appendChild(canvas);
+  it("exports from the preview instance instead of DOM bounds", async () => {
+    const blob = new Blob(["mindmap"], { type: "image/png" });
+    const exportPng = vi.fn().mockResolvedValue(blob);
+    const blobToDataUrlImpl = vi.fn().mockResolvedValue("data:image/png;base64,test");
 
     await expect(
-      exportMindmapPreviewImage(source, { pixelRatio: 3, toPngImpl }),
+      exportMindmapPreviewImage(
+        {
+          exportPng,
+        },
+        { blobToDataUrlImpl },
+      ),
     ).resolves.toBe("data:image/png;base64,test");
 
-    expect(toPngImpl).toHaveBeenCalledWith(
-      canvas,
-      expect.objectContaining({
-        width: 680,
-        height: 420,
-        pixelRatio: 3,
-      }),
+    expect(exportPng).toHaveBeenCalledWith(
+      false,
+      expect.stringContaining("background: #FFFFFF"),
     );
+    expect(blobToDataUrlImpl).toHaveBeenCalledWith(blob);
+  });
+
+  it("throws when the preview exporter returns an empty blob", async () => {
+    await expect(
+      exportMindmapPreviewImage({
+        exportPng: vi.fn().mockResolvedValue(null),
+      }),
+    ).rejects.toThrow("mindmap export returned an empty image");
+  });
+
+  it("converts the exported blob to a data url", async () => {
+    const dataUrl = await blobToDataUrl(new Blob(["mindmap"], { type: "image/png" }));
+
+    expect(dataUrl).toMatch(/^data:image\/png;base64,/);
   });
 });

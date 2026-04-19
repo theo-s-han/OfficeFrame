@@ -107,6 +107,7 @@ vi.mock("mind-elixir", () => {
     });
 
     clearHistory = clearHistoryMock;
+    exportPng = vi.fn().mockResolvedValue(new Blob(["mindmap"], { type: "image/png" }));
     scaleFit = scaleFitMock;
     toCenter = toCenterMock;
     selectNode = selectNodeMock;
@@ -320,6 +321,10 @@ describe("MindmapEditorShell", () => {
 
   it("exports the current preview as an image", async () => {
     const { container } = render(<MindmapEditorShell />);
+
+    await waitFor(() => {
+      expect(getActionBarButtons(container)[3]).toBeEnabled();
+    });
 
     fireEvent.click(getActionBarButtons(container)[3]);
 

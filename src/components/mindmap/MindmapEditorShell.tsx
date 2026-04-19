@@ -9,7 +9,10 @@ import {
   normalizeGanttTaskColor,
 } from "@/lib/gantt/taskModel";
 import { readMindmapDebugEnabled, recordMindmapDebugEvent } from "@/lib/mindmap/debug";
-import { exportMindmapPreviewImage } from "@/lib/mindmap/export";
+import {
+  exportMindmapPreviewImage,
+  type MindmapPreviewExportHandle,
+} from "@/lib/mindmap/export";
 import {
   cloneMindmapNode,
   countMindmapNodes,
@@ -54,15 +57,16 @@ export function MindmapEditorShell() {
   const [fitViewToken, setFitViewToken] = useState(0);
   const [colorDialogNodeId, setColorDialogNodeId] = useState<string | null>(null);
   const [draftColor, setDraftColor] = useState(defaultGanttTaskColor);
+  const [isPreviewExportReady, setIsPreviewExportReady] = useState(false);
   const debugEnabled = useState(() => readMindmapDebugEnabled())[0];
-  const previewRef = useRef<HTMLDivElement>(null);
+  const exportHandleRef = useRef<MindmapPreviewExportHandle | null>(null);
 
   const flatNodes = useMemo(() => flattenMindmap(root), [root]);
   const selectedNode = findMindmapNode(root, selectedNodeId) ?? root;
   const selectedFlatNode = flatNodes.find((node) => node.id === selectedNode.id);
   const issues = useMemo(() => validateMindmap(root), [root]);
   const selectedNodeIssues = issues.filter((issue) => issue.nodeId === selectedNode.id);
-  const canExport = issues.length === 0;
+  const canExport = issues.length === 0 && isPreviewExportReady;
   const canDeleteSelectedNode = selectedNode.id !== root.id;
   const canUndo = history.length > 0;
   const previewStats = useMemo(
@@ -244,15 +248,20 @@ export function MindmapEditorShell() {
     );
   }
 
+  function handlePreviewExportHandleChange(nextHandle: MindmapPreviewExportHandle | null) {
+    exportHandleRef.current = nextHandle;
+    setIsPreviewExportReady(Boolean(nextHandle));
+  }
+
   async function handleExportImage() {
-    if (!previewRef.current || !canExport) {
+    if (!exportHandleRef.current || !canExport) {
       return;
     }
 
     setExportStatus("마인드맵 이미지를 준비하고 있습니다.");
 
     try {
-      const dataUrl = await exportMindmapPreviewImage(previewRef.current);
+      const dataUrl = await exportMindmapPreviewImage(exportHandleRef.current);
 
       downloadDataUrl(dataUrl, createDatedPngFileName("office-tool-mindmap"));
       setExportStatus("마인드맵 이미지를 내보냈습니다.");
@@ -445,7 +454,7 @@ export function MindmapEditorShell() {
             <code>-</code> 버튼이 표시됩니다.
           </p>
 
-          <div className="mindmap-preview-surface" ref={previewRef}>
+          <div className="mindmap-preview-surface">
             <MindmapCanvasPreview
               canRemoveSelectedNode={canDeleteSelectedNode}
               debugEnabled={debugEnabled}
@@ -453,6 +462,7 @@ export function MindmapEditorShell() {
               root={root}
               selectedNodeId={selectedNode.id}
               onAddChildNode={handleAddChild}
+              onExportHandleChange={handlePreviewExportHandleChange}
               onOpenColorPicker={openColorPickerForNode}
               onRemoveNode={handleRemoveSelected}
               onRenameNode={handleRenameNode}

@@ -1,74 +1,54 @@
-import { toPng } from "html-to-image";
 import { defaultGanttPalette } from "@/lib/gantt/theme";
 
-type MindmapExportSize = {
-  height: number;
-  width: number;
+export type MindmapPreviewExportHandle = {
+  exportPng: (noForeignObject?: boolean, injectCss?: string) => Promise<Blob | null>;
 };
 
-type MindmapToPng = typeof toPng;
+type MindmapExportOptions = {
+  blobToDataUrlImpl?: (blob: Blob) => Promise<string>;
+  injectCss?: string;
+  noForeignObject?: boolean;
+};
 
-export function getMindmapExportElement(source: HTMLElement): HTMLElement {
-  return (
-    source.querySelector<HTMLElement>(".map-canvas") ??
-    source.querySelector<HTMLElement>(".map-container") ??
-    source
-  );
-}
-
-export function getMindmapExportSize(
-  element: HTMLElement,
-): MindmapExportSize {
-  const rect = element.getBoundingClientRect();
-
-  return {
-    width: Math.max(1, Math.ceil(rect.width || element.scrollWidth || 1)),
-    height: Math.max(1, Math.ceil(rect.height || element.scrollHeight || 1)),
-  };
-}
-
-export async function waitForMindmapPreviewReady(
-  source: HTMLElement,
-  timeoutMs = 1200,
-): Promise<HTMLElement> {
-  const startedAt = window.performance.now();
-
-  while (window.performance.now() - startedAt < timeoutMs) {
-    const target = getMindmapExportElement(source);
-    const size = getMindmapExportSize(target);
-
-    if (size.width > 1 && size.height > 1) {
-      return target;
-    }
-
-    await new Promise<void>((resolve) => {
-      window.requestAnimationFrame(() => resolve());
-    });
+const defaultMindmapExportCss = `
+  svg {
+    background: ${defaultGanttPalette.neutral.background};
   }
+`;
 
-  throw new Error("mindmap preview not ready");
+export function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+        return;
+      }
+
+      reject(new Error("mindmap export did not return a data url"));
+    };
+    reader.onerror = () => {
+      reject(reader.error ?? new Error("mindmap export file reader failed"));
+    };
+    reader.readAsDataURL(blob);
+  });
 }
 
 export async function exportMindmapPreviewImage(
-  source: HTMLElement,
-  options?: {
-    pixelRatio?: number;
-    toPngImpl?: MindmapToPng;
-  },
+  source: MindmapPreviewExportHandle,
+  options?: MindmapExportOptions,
 ): Promise<string> {
-  const target = await waitForMindmapPreviewReady(source);
-  const size = getMindmapExportSize(target);
-  const toPngImpl = options?.toPngImpl ?? toPng;
+  const blob = await source.exportPng(
+    options?.noForeignObject ?? false,
+    options?.injectCss ?? defaultMindmapExportCss,
+  );
 
-  return toPngImpl(target, {
-    cacheBust: true,
-    backgroundColor: defaultGanttPalette.neutral.background,
-    pixelRatio: options?.pixelRatio ?? 2,
-    width: size.width,
-    height: size.height,
-    style: {
-      margin: "0",
-      backgroundColor: defaultGanttPalette.neutral.background,
-    },
-  });
+  if (!blob) {
+    throw new Error("mindmap export returned an empty image");
+  }
+
+  const blobToDataUrlImpl = options?.blobToDataUrlImpl ?? blobToDataUrl;
+
+  return blobToDataUrlImpl(blob);
 }

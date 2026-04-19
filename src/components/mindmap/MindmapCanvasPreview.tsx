@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MindElixirCtor, MindElixirData, MindElixirInstance, NodeObj } from "mind-elixir";
+import type { MindmapPreviewExportHandle } from "@/lib/mindmap/export";
 import { buildMindElixirData, findMindmapNode, type MindmapNode } from "@/lib/mindmap/model";
 import { recordMindmapDebugEvent } from "@/lib/mindmap/debug";
 import { defaultMindmapTheme } from "@/lib/mindmap/theme";
@@ -13,6 +14,7 @@ type MindmapCanvasPreviewProps = {
   root: MindmapNode;
   selectedNodeId: string;
   onAddChildNode: (nodeId: string) => void;
+  onExportHandleChange: (handle: MindmapPreviewExportHandle | null) => void;
   onOpenColorPicker: (nodeId: string) => void;
   onRemoveNode: (nodeId: string) => void;
   onRenameNode: (nodeId: string, nextTopic: string) => void;
@@ -54,6 +56,7 @@ export function MindmapCanvasPreview({
   root,
   selectedNodeId,
   onAddChildNode,
+  onExportHandleChange,
   onOpenColorPicker,
   onRemoveNode,
   onRenameNode,
@@ -72,6 +75,7 @@ export function MindmapCanvasPreview({
   const ctorRef = useRef<MindElixirCtor | null>(null);
   const onSelectNodeRef = useRef(onSelectNode);
   const onAddChildNodeRef = useRef(onAddChildNode);
+  const onExportHandleChangeRef = useRef(onExportHandleChange);
   const onOpenColorPickerRef = useRef(onOpenColorPicker);
   const onRemoveNodeRef = useRef(onRemoveNode);
   const onRenameNodeRef = useRef(onRenameNode);
@@ -93,11 +97,20 @@ export function MindmapCanvasPreview({
   useEffect(() => {
     onSelectNodeRef.current = onSelectNode;
     onAddChildNodeRef.current = onAddChildNode;
+    onExportHandleChangeRef.current = onExportHandleChange;
     onOpenColorPickerRef.current = onOpenColorPicker;
     onRemoveNodeRef.current = onRemoveNode;
     onRenameNodeRef.current = onRenameNode;
     previewDataRef.current = previewData;
-  }, [onAddChildNode, onOpenColorPicker, onRemoveNode, onRenameNode, onSelectNode, previewData]);
+  }, [
+    onAddChildNode,
+    onExportHandleChange,
+    onOpenColorPicker,
+    onRemoveNode,
+    onRenameNode,
+    onSelectNode,
+    previewData,
+  ]);
 
   useEffect(() => {
     if (!editingNode) {
@@ -225,6 +238,9 @@ export function MindmapCanvasPreview({
       instance.init(previewDataRef.current);
       instance.clearHistory?.();
       instanceRef.current = instance;
+      onExportHandleChangeRef.current({
+        exportPng: (noForeignObject, injectCss) => instance.exportPng(noForeignObject, injectCss),
+      });
 
       const handleSelectNodes = (nodes: NodeObj[]) => {
         const nextNodeId = nodes[0]?.id;
@@ -294,6 +310,7 @@ export function MindmapCanvasPreview({
     }
 
     mountPreview().catch((error) => {
+      onExportHandleChangeRef.current(null);
       setRenderError("마인드맵 미리보기를 준비하지 못했습니다.");
       recordMindmapDebugEvent(
         "preview.error",
@@ -309,6 +326,7 @@ export function MindmapCanvasPreview({
       removeSelectionListener?.();
       removeDomSelectionListener?.();
       removeDomEditListener?.();
+      onExportHandleChangeRef.current(null);
       instanceRef.current?.destroy();
       instanceRef.current = null;
     };
