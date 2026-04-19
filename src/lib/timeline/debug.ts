@@ -1,4 +1,14 @@
+import {
+  readToolDebugEnabled,
+  readToolDebugEnabledFromSources,
+  recordToolDebugEvent,
+} from "@/lib/shared/debug";
+
 const debugStorageKey = "officeTool.timeline.debug";
+const timelineDebugQuery = {
+  debugKeys: ["timeline"],
+} as const;
+const timelineDebugWindowKey = "__OFFICE_TOOL_TIMELINE_DEBUG__";
 
 export type TimelineDebugEntry = {
   event: string;
@@ -16,22 +26,11 @@ export function readTimelineDebugEnabledFromSources(
   search: string,
   storedValue: string | null,
 ) {
-  return (
-    search.includes("debug=timeline") ||
-    search.includes("debug=all") ||
-    storedValue === "true"
-  );
+  return readToolDebugEnabledFromSources(search, storedValue, timelineDebugQuery);
 }
 
 export function readTimelineDebugEnabled() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  return readTimelineDebugEnabledFromSources(
-    window.location.search,
-    window.localStorage.getItem(debugStorageKey),
-  );
+  return readToolDebugEnabled(debugStorageKey, timelineDebugQuery);
 }
 
 export function recordTimelineDebugEvent(
@@ -39,21 +38,16 @@ export function recordTimelineDebugEvent(
   payload: unknown,
   enabled: boolean,
 ) {
-  if (!enabled || typeof window === "undefined") {
-    return null;
-  }
-
   const entry = {
     event,
     payload,
     timestamp: new Date().toISOString(),
   } satisfies TimelineDebugEntry;
 
-  window.__OFFICE_TOOL_TIMELINE_DEBUG__ = [
-    ...(window.__OFFICE_TOOL_TIMELINE_DEBUG__ ?? []),
+  return recordToolDebugEvent({
+    enabled,
     entry,
-  ];
-  console.info("[office-tool][timeline]", entry);
-
-  return entry;
+    windowKey: timelineDebugWindowKey,
+    consoleTag: "[office-tool][timeline]",
+  });
 }

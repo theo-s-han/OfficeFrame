@@ -1,4 +1,14 @@
+import {
+  readToolDebugEnabled,
+  readToolDebugEnabledFromSources,
+  recordToolDebugEvent,
+} from "@/lib/shared/debug";
+
 const debugStorageKey = "officeTool.orgchart.debug";
+const orgChartDebugQuery = {
+  debugKeys: ["orgchart"],
+} as const;
+const orgChartDebugWindowKey = "__OFFICE_TOOL_ORGCHART_DEBUG__";
 
 export type OrgChartDebugEntry = {
   event: string;
@@ -16,22 +26,11 @@ export function readOrgChartDebugEnabledFromSources(
   search: string,
   storedValue: string | null,
 ) {
-  return (
-    search.includes("debug=orgchart") ||
-    search.includes("debug=all") ||
-    storedValue === "true"
-  );
+  return readToolDebugEnabledFromSources(search, storedValue, orgChartDebugQuery);
 }
 
 export function readOrgChartDebugEnabled() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  return readOrgChartDebugEnabledFromSources(
-    window.location.search,
-    window.localStorage.getItem(debugStorageKey),
-  );
+  return readToolDebugEnabled(debugStorageKey, orgChartDebugQuery);
 }
 
 export function recordOrgChartDebugEvent(
@@ -39,21 +38,16 @@ export function recordOrgChartDebugEvent(
   payload: unknown,
   enabled: boolean,
 ) {
-  if (!enabled || typeof window === "undefined") {
-    return null;
-  }
-
   const entry = {
     event,
     payload,
     timestamp: new Date().toISOString(),
   } satisfies OrgChartDebugEntry;
 
-  window.__OFFICE_TOOL_ORGCHART_DEBUG__ = [
-    ...(window.__OFFICE_TOOL_ORGCHART_DEBUG__ ?? []),
+  return recordToolDebugEvent({
+    enabled,
     entry,
-  ];
-  console.info("[office-tool][org-chart]", entry);
-
-  return entry;
+    windowKey: orgChartDebugWindowKey,
+    consoleTag: "[office-tool][org-chart]",
+  });
 }

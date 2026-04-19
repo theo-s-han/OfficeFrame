@@ -1,4 +1,14 @@
+import {
+  readToolDebugEnabled,
+  readToolDebugEnabledFromSources,
+  recordToolDebugEvent,
+} from "@/lib/shared/debug";
+
 const debugStorageKey = "officeTool.flowchart.debug";
+const flowchartDebugQuery = {
+  debugKeys: ["flowchart"],
+} as const;
+const flowchartDebugWindowKey = "__OFFICE_TOOL_FLOWCHART_DEBUG__";
 
 export type FlowchartDebugEntry = {
   event: string;
@@ -16,22 +26,11 @@ export function readFlowchartDebugEnabledFromSources(
   search: string,
   storedValue: string | null,
 ) {
-  return (
-    search.includes("debug=flowchart") ||
-    search.includes("debug=all") ||
-    storedValue === "true"
-  );
+  return readToolDebugEnabledFromSources(search, storedValue, flowchartDebugQuery);
 }
 
 export function readFlowchartDebugEnabled() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  return readFlowchartDebugEnabledFromSources(
-    window.location.search,
-    window.localStorage.getItem(debugStorageKey),
-  );
+  return readToolDebugEnabled(debugStorageKey, flowchartDebugQuery);
 }
 
 export function recordFlowchartDebugEvent(
@@ -39,21 +38,16 @@ export function recordFlowchartDebugEvent(
   payload: unknown,
   enabled: boolean,
 ) {
-  if (!enabled || typeof window === "undefined") {
-    return null;
-  }
-
   const entry = {
     event,
     payload,
     timestamp: new Date().toISOString(),
   } satisfies FlowchartDebugEntry;
 
-  window.__OFFICE_TOOL_FLOWCHART_DEBUG__ = [
-    ...(window.__OFFICE_TOOL_FLOWCHART_DEBUG__ ?? []),
+  return recordToolDebugEvent({
+    enabled,
     entry,
-  ];
-  console.info("[office-tool][flowchart]", entry);
-
-  return entry;
+    windowKey: flowchartDebugWindowKey,
+    consoleTag: "[office-tool][flowchart]",
+  });
 }

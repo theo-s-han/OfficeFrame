@@ -78,6 +78,7 @@ import {
   getGanttPaletteCssVariables,
 } from "@/lib/gantt/theme";
 import { getWbsParentOptions } from "@/lib/gantt/wbsTree";
+import { createDatedPngFileName, downloadDataUrl } from "@/lib/shared/download";
 
 type GeneratedGanttImage = {
   dataUrl: string;
@@ -1314,17 +1315,11 @@ export function GanttEditorShell() {
   }
 
   function getImageFileName() {
-    const datePart = new Date().toISOString().slice(0, 10);
-
-    return `office-tool-${state.chartType}-gantt-${datePart}.png`;
+    return createDatedPngFileName(`office-tool-${state.chartType}-gantt`);
   }
 
   function downloadGeneratedImage(image: GeneratedGanttImage) {
-    const link = document.createElement("a");
-
-    link.download = image.fileName;
-    link.href = image.dataUrl;
-    link.click();
+    downloadDataUrl(image.dataUrl, image.fileName);
     setExportStatus("차트 이미지 다운로드가 시작되었습니다.");
     recordGanttDebugEvent(debugEnabled, "export.image.download", {
       byteLength: image.dataUrl.length,

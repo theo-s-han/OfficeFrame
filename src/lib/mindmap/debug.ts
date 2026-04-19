@@ -1,4 +1,14 @@
+import {
+  readToolDebugEnabled,
+  readToolDebugEnabledFromSources,
+  recordToolDebugEvent,
+} from "@/lib/shared/debug";
+
 const debugStorageKey = "officeTool.mindmap.debug";
+const mindmapDebugQuery = {
+  debugKeys: ["mindmap"],
+} as const;
+const mindmapDebugWindowKey = "__OFFICE_TOOL_MINDMAP_DEBUG__";
 
 export type MindmapDebugEntry = {
   event: string;
@@ -16,22 +26,11 @@ export function readMindmapDebugEnabledFromSources(
   search: string,
   storedValue: string | null,
 ): boolean {
-  return (
-    search.includes("debug=mindmap") ||
-    search.includes("debug=all") ||
-    storedValue === "true"
-  );
+  return readToolDebugEnabledFromSources(search, storedValue, mindmapDebugQuery);
 }
 
 export function readMindmapDebugEnabled(): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  return readMindmapDebugEnabledFromSources(
-    window.location.search,
-    window.localStorage.getItem(debugStorageKey),
-  );
+  return readToolDebugEnabled(debugStorageKey, mindmapDebugQuery);
 }
 
 export function recordMindmapDebugEvent(
@@ -39,21 +38,16 @@ export function recordMindmapDebugEvent(
   payload: unknown,
   enabled: boolean,
 ): MindmapDebugEntry | null {
-  if (!enabled || typeof window === "undefined") {
-    return null;
-  }
-
   const entry = {
     event,
     payload,
     timestamp: new Date().toISOString(),
   } satisfies MindmapDebugEntry;
 
-  window.__OFFICE_TOOL_MINDMAP_DEBUG__ = [
-    ...(window.__OFFICE_TOOL_MINDMAP_DEBUG__ ?? []),
+  return recordToolDebugEvent({
+    enabled,
     entry,
-  ];
-  console.info("[office-tool][mindmap]", entry);
-
-  return entry;
+    windowKey: mindmapDebugWindowKey,
+    consoleTag: "[office-tool][mindmap]",
+  });
 }

@@ -1,3 +1,8 @@
+import {
+  readToolDebugEnabled,
+  readToolDebugEnabledFromSources,
+  recordToolDebugEvent,
+} from "@/lib/shared/debug";
 import type { GanttDebugSnapshot } from "./taskModel";
 
 export type GanttDebugEvent = {
@@ -5,6 +10,13 @@ export type GanttDebugEvent = {
   timestamp: string;
   payload?: unknown;
 };
+
+const ganttDebugStorageKey = "officeTool.gantt.debug";
+const ganttDebugQuery = {
+  acceptAll: false,
+  debugKeys: ["gantt"],
+} as const;
+const ganttDebugWindowKey = "__OFFICE_TOOL_GANTT_DEBUG__";
 
 declare global {
   interface Window {
@@ -16,21 +28,11 @@ export function isGanttDebugRequested(
   search: string,
   storageValue?: string | null,
 ): boolean {
-  const params = new URLSearchParams(search);
-  const queryValue = params.get("debug");
-
-  return queryValue === "gantt" || storageValue === "true";
+  return readToolDebugEnabledFromSources(search, storageValue, ganttDebugQuery);
 }
 
 export function readGanttDebugEnabled(): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  return isGanttDebugRequested(
-    window.location.search,
-    window.localStorage.getItem("officeTool.gantt.debug"),
-  );
+  return readToolDebugEnabled(ganttDebugStorageKey, ganttDebugQuery);
 }
 
 export function recordGanttDebugEvent(
@@ -38,28 +40,20 @@ export function recordGanttDebugEvent(
   label: string,
   payload?: unknown,
 ): GanttDebugEvent | null {
-  if (!enabled) {
-    return null;
-  }
-
   const event: GanttDebugEvent = {
     label,
     timestamp: new Date().toISOString(),
     payload,
   };
 
-  if (typeof window !== "undefined") {
-    window.__OFFICE_TOOL_GANTT_DEBUG__ = [
-      ...(window.__OFFICE_TOOL_GANTT_DEBUG__ ?? []),
-      event,
-    ];
-  }
-
-  if (typeof console !== "undefined") {
-    console.debug("[office-tool:gantt]", label, payload ?? "");
-  }
-
-  return event;
+  return recordToolDebugEvent({
+    enabled,
+    entry: event,
+    windowKey: ganttDebugWindowKey,
+    consoleTag: "[office-tool:gantt]",
+    consoleMethod: "debug",
+    consoleArgs: (entry) => ["[office-tool:gantt]", entry.label, entry.payload ?? ""],
+  });
 }
 
 export function createGanttDebugPayload(snapshot: GanttDebugSnapshot): {
