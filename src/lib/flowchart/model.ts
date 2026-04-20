@@ -20,12 +20,14 @@ export type FlowchartBranch = {
 export type FlowchartStep = {
   branches: FlowchartBranch[];
   id: string;
+  input?: string;
   label: string;
   lane?: string;
   nextStepId?: string;
   notes?: string;
   order: number;
   owner?: string;
+  output?: string;
   type: FlowchartNodeType;
 };
 
@@ -71,6 +73,13 @@ export type FlowchartLayout = {
   steps: FlowchartLayoutNode[];
 };
 
+export type FlowchartNodeVisualMetrics = {
+  height: number;
+  symbolHeight: number;
+  symbolWidth: number;
+  width: number;
+};
+
 export const flowchartDirectionOptions: Array<{
   label: string;
   value: FlowchartDirection;
@@ -94,21 +103,35 @@ export const flowchartNodeTypeOptions: Array<{
 
 const elk = new ELK();
 
-const flowchartNodeSizes: Record<
-  FlowchartNodeType,
-  {
-    height: number;
-    width: number;
-  }
-> = {
-  start: { width: 220, height: 92 },
-  process: { width: 220, height: 120 },
-  decision: { width: 220, height: 188 },
-  document: { width: 220, height: 138 },
-  data: { width: 220, height: 128 },
-  subprocess: { width: 220, height: 120 },
-  end: { width: 220, height: 92 },
+const flowchartNodeSizes: Record<FlowchartNodeType, FlowchartNodeVisualMetrics> = {
+  start: { width: 220, height: 128, symbolWidth: 220, symbolHeight: 84 },
+  process: { width: 220, height: 176, symbolWidth: 220, symbolHeight: 124 },
+  decision: { width: 220, height: 220, symbolWidth: 172, symbolHeight: 172 },
+  document: { width: 220, height: 188, symbolWidth: 220, symbolHeight: 138 },
+  data: { width: 220, height: 180, symbolWidth: 220, symbolHeight: 128 },
+  subprocess: { width: 220, height: 176, symbolWidth: 220, symbolHeight: 124 },
+  end: { width: 220, height: 128, symbolWidth: 220, symbolHeight: 84 },
 };
+
+export function getFlowchartNodeVisualMetrics(
+  nodeType: FlowchartNodeType,
+): FlowchartNodeVisualMetrics {
+  return flowchartNodeSizes[nodeType];
+}
+
+export function getFlowchartNodeSymbolBounds(step: FlowchartLayoutNode) {
+  const metrics = getFlowchartNodeVisualMetrics(step.type);
+  const symbolOffsetX = (step.size.width - metrics.symbolWidth) / 2;
+
+  return {
+    centerX: step.position.x + step.size.width / 2,
+    centerY: step.position.y + metrics.symbolHeight / 2,
+    left: step.position.x + symbolOffsetX,
+    right: step.position.x + symbolOffsetX + metrics.symbolWidth,
+    top: step.position.y,
+    bottom: step.position.y + metrics.symbolHeight,
+  };
+}
 
 function createStepId(steps: FlowchartStep[]) {
   const nextNumber =
@@ -211,10 +234,12 @@ function normalizeStepForType(step: FlowchartStep) {
 export function createEmptyFlowchartStep(steps: FlowchartStep[]): FlowchartStep {
   return {
     id: createStepId(steps),
+    input: "",
     label: "",
     type: "process",
     lane: "",
     owner: "",
+    output: "",
     notes: "",
     nextStepId: "",
     branches: [],
@@ -239,9 +264,11 @@ export function createSampleFlowchartDocument(): FlowchartDocument {
     steps: [
       {
         id: "flow-step-1",
+        input: "요청서",
         label: "요청 접수",
         type: "start",
         owner: "PM",
+        output: "검토 대상 등록",
         notes: "새 요청을 등록합니다.",
         nextStepId: "flow-step-2",
         branches: [],
@@ -249,9 +276,11 @@ export function createSampleFlowchartDocument(): FlowchartDocument {
       },
       {
         id: "flow-step-2",
+        input: "요청서",
         label: "요청 내용 확인",
         type: "process",
         owner: "기획",
+        output: "처리 경로 초안",
         notes: "요청 범위와 우선순위를 확인합니다.",
         nextStepId: "flow-step-3",
         branches: [],
@@ -259,9 +288,11 @@ export function createSampleFlowchartDocument(): FlowchartDocument {
       },
       {
         id: "flow-step-3",
+        input: "처리 경로 초안",
         label: "기존 템플릿으로 처리 가능한가?",
         type: "decision",
         owner: "리드",
+        output: "재사용 여부",
         notes: "재사용 가능 여부를 판단합니다.",
         branches: [
           {
@@ -279,9 +310,11 @@ export function createSampleFlowchartDocument(): FlowchartDocument {
       },
       {
         id: "flow-step-4",
+        input: "기존 템플릿",
         label: "기존 문서 템플릿 수정",
         type: "document",
         owner: "기획",
+        output: "수정안 문서",
         notes: "문서 구조에 맞게 수정안을 정리합니다.",
         nextStepId: "flow-step-6",
         branches: [],
@@ -289,9 +322,11 @@ export function createSampleFlowchartDocument(): FlowchartDocument {
       },
       {
         id: "flow-step-5",
+        input: "요청 항목",
         label: "입출력 스키마 정의",
         type: "data",
         owner: "아키텍트",
+        output: "입출력 스키마",
         notes: "새 플로우에 필요한 입력과 출력을 정리합니다.",
         nextStepId: "flow-step-6",
         branches: [],
@@ -299,9 +334,11 @@ export function createSampleFlowchartDocument(): FlowchartDocument {
       },
       {
         id: "flow-step-6",
+        input: "수정안 / 스키마",
         label: "구현 작업 묶음 실행",
         type: "subprocess",
         owner: "개발",
+        output: "검증 결과",
         notes: "구현과 검증 흐름을 한 묶음으로 진행합니다.",
         nextStepId: "flow-step-7",
         branches: [],
@@ -309,9 +346,11 @@ export function createSampleFlowchartDocument(): FlowchartDocument {
       },
       {
         id: "flow-step-7",
+        input: "검토 결과",
         label: "검토 반영 필요?",
         type: "decision",
         owner: "운영",
+        output: "반영 여부",
         notes: "최종 검토 결과를 확인합니다.",
         branches: [
           {
@@ -329,19 +368,23 @@ export function createSampleFlowchartDocument(): FlowchartDocument {
       },
       {
         id: "flow-step-8",
+        input: "검토 의견",
         label: "문서 반영 완료",
         type: "document",
         nextStepId: "flow-step-9",
         owner: "운영",
+        output: "최종 문서",
         notes: "문서와 PPT에 결과를 반영합니다.",
         branches: [],
         order: 7,
       },
       {
         id: "flow-step-9",
+        input: "최종 문서",
         label: "완료",
         type: "end",
         owner: "운영",
+        output: "배포 완료",
         notes: "최종 결과를 완료 상태로 마무리합니다.",
         branches: [],
         order: 8,
@@ -915,9 +958,11 @@ export function hasBlockingFlowchartIssues(issues: FlowchartValidationIssue[]) {
 function getRenderableSteps(document: FlowchartDocument) {
   return document.steps.map((step) => ({
     ...step,
+    input: step.input?.trim() ?? "",
     label: step.label.trim() || "이름 없는 단계",
     lane: document.laneMode ? step.lane?.trim() ?? "" : "",
     owner: step.owner?.trim() ?? "",
+    output: step.output?.trim() ?? "",
     notes: step.notes?.trim() ?? "",
   }));
 }

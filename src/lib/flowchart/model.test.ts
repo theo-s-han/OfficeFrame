@@ -1,5 +1,7 @@
 import {
   createSampleFlowchartDocument,
+  getFallbackFlowchartLayout,
+  getFlowchartNodeSymbolBounds,
   hasBlockingFlowchartIssues,
   validateFlowchartDocument,
 } from "./model";
@@ -78,5 +80,25 @@ describe("flowchart model", () => {
 
     expect(issues.some((issue) => issue.severity === "warning")).toBe(true);
     expect(hasBlockingFlowchartIssues(issues)).toBe(false);
+  });
+
+  it("keeps symbol anchor bounds aligned with the rendered node geometry", () => {
+    const sample = createSampleFlowchartDocument();
+    const layout = getFallbackFlowchartLayout(sample);
+    const processStep = layout.steps.find((step) => step.type === "process");
+    const decisionStep = layout.steps.find((step) => step.type === "decision");
+
+    if (!processStep || !decisionStep) {
+      throw new Error("expected process and decision steps in sample data");
+    }
+
+    expect(getFlowchartNodeSymbolBounds(processStep)).toMatchObject({
+      left: processStep.position.x,
+      right: processStep.position.x + processStep.size.width,
+    });
+    expect(getFlowchartNodeSymbolBounds(decisionStep)).toMatchObject({
+      centerX: decisionStep.position.x + decisionStep.size.width / 2,
+      top: decisionStep.position.y,
+    });
   });
 });

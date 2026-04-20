@@ -32,6 +32,98 @@ import { FlowchartPreview } from "./FlowchartPreview";
 
 const initialDocument = createSampleFlowchartDocument();
 
+function getFlowchartStepLabel(nodeType: FlowchartNodeType) {
+  if (nodeType === "decision") {
+    return "판단 질문";
+  }
+
+  if (nodeType === "start") {
+    return "시작 단계명";
+  }
+
+  if (nodeType === "end") {
+    return "종료 단계명";
+  }
+
+  return "단계명";
+}
+
+function getFlowchartStepLabelPlaceholder(nodeType: FlowchartNodeType) {
+  if (nodeType === "start") {
+    return "예: 요청 접수";
+  }
+
+  if (nodeType === "decision") {
+    return "예: 기존 템플릿으로 처리 가능한가?";
+  }
+
+  if (nodeType === "document") {
+    return "예: 검토 문서 작성";
+  }
+
+  if (nodeType === "data") {
+    return "예: 입력 데이터 확인";
+  }
+
+  if (nodeType === "subprocess") {
+    return "예: 검증 작업 묶음 실행";
+  }
+
+  if (nodeType === "end") {
+    return "예: 완료";
+  }
+
+  return "예: 요청 내용 확인";
+}
+
+function getFlowchartInputLabel(nodeType: FlowchartNodeType) {
+  if (nodeType === "document") {
+    return "입력 문서";
+  }
+
+  if (nodeType === "data") {
+    return "입력 데이터";
+  }
+
+  if (nodeType === "decision") {
+    return "판단 입력";
+  }
+
+  return "입력값";
+}
+
+function getFlowchartOutputLabel(nodeType: FlowchartNodeType) {
+  if (nodeType === "document") {
+    return "출력 문서";
+  }
+
+  if (nodeType === "data") {
+    return "출력 데이터";
+  }
+
+  if (nodeType === "end") {
+    return "종료 결과";
+  }
+
+  return "출력값";
+}
+
+function getFlowchartNotesLabel(nodeType: FlowchartNodeType) {
+  if (nodeType === "decision") {
+    return "판단 기준";
+  }
+
+  if (nodeType === "start") {
+    return "시작 조건 설명";
+  }
+
+  if (nodeType === "end") {
+    return "종료 설명";
+  }
+
+  return "단계 설명";
+}
+
 export function FlowchartEditorShell() {
   const [document, setDocument] = useState(initialDocument);
   const [selectedStepId, setSelectedStepId] = useState<string | undefined>(
@@ -209,6 +301,10 @@ export function FlowchartEditorShell() {
             설정합니다. 표준 플로우차트 규칙에 맞게 시작, 처리, 결정, 문서, 데이터,
             서브프로세스, 종료를 조합할 수 있습니다.
           </p>
+          <div className="empty-state flowchart-warning-summary" role="note">
+            단계마다 입력값과 출력값을 함께 적으면 preview와 PNG에 업무 흐름의
+            전후 관계가 더 명확하게 남습니다.
+          </div>
 
           <div className="diagram-meta-grid flowchart-meta-grid">
             <label>
@@ -303,9 +399,10 @@ export function FlowchartEditorShell() {
                   >
                     <div className="diagram-item-grid">
                       <label>
-                        <span>단계명</span>
+                        <span>{getFlowchartStepLabel(step.type)}</span>
                         <input
                           aria-label={`${step.label || "단계"} 단계명`}
+                          placeholder={getFlowchartStepLabelPlaceholder(step.type)}
                           value={step.label}
                           onChange={(event) =>
                             updateCurrentDocument((currentDocument) => ({
@@ -374,6 +471,7 @@ export function FlowchartEditorShell() {
                         <span>담당</span>
                         <input
                           aria-label={`${step.label || "단계"} 담당`}
+                          placeholder="예: 운영 / 기획 / 결재 시스템"
                           value={step.owner ?? ""}
                           onChange={(event) =>
                             updateCurrentDocument((currentDocument) => ({
@@ -383,6 +481,48 @@ export function FlowchartEditorShell() {
                                 step.id,
                                 {
                                   owner: event.target.value,
+                                },
+                              ),
+                            }))
+                          }
+                        />
+                      </label>
+
+                      <label>
+                        <span>{getFlowchartInputLabel(step.type)}</span>
+                        <input
+                          aria-label={`${step.label || "단계"} 입력값`}
+                          placeholder="예: 요청서 / 승인 요청 / 원본 데이터"
+                          value={step.input ?? ""}
+                          onChange={(event) =>
+                            updateCurrentDocument((currentDocument) => ({
+                              ...currentDocument,
+                              steps: updateFlowchartStep(
+                                currentDocument.steps,
+                                step.id,
+                                {
+                                  input: event.target.value,
+                                },
+                              ),
+                            }))
+                          }
+                        />
+                      </label>
+
+                      <label>
+                        <span>{getFlowchartOutputLabel(step.type)}</span>
+                        <input
+                          aria-label={`${step.label || "단계"} 출력값`}
+                          placeholder="예: 검토 완료 / 승인 여부 / 결과 문서"
+                          value={step.output ?? ""}
+                          onChange={(event) =>
+                            updateCurrentDocument((currentDocument) => ({
+                              ...currentDocument,
+                              steps: updateFlowchartStep(
+                                currentDocument.steps,
+                                step.id,
+                                {
+                                  output: event.target.value,
                                 },
                               ),
                             }))
@@ -422,9 +562,14 @@ export function FlowchartEditorShell() {
                       ) : null}
 
                       <label className="wide-field">
-                        <span>설명</span>
+                        <span>{getFlowchartNotesLabel(step.type)}</span>
                         <textarea
                           aria-label={`${step.label || "단계"} 설명`}
+                          placeholder={
+                            step.type === "decision"
+                              ? "예: 승인 기준을 충족하면 예, 아니면 아니오로 분기"
+                              : "예: 이 단계에서 무엇을 확인하거나 처리하는지"
+                          }
                           value={step.notes ?? ""}
                           onChange={(event) =>
                             updateCurrentDocument((currentDocument) => ({
@@ -466,7 +611,7 @@ export function FlowchartEditorShell() {
                                   <span>분기 라벨</span>
                                   <input
                                     aria-label={`${step.label || "결정 단계"} 분기 라벨`}
-                                    placeholder="예 / 아니오"
+                                    placeholder="예 / 아니오 / 승인 / 반려"
                                     value={branch.label}
                                     onChange={(event) =>
                                       updateCurrentDocument((currentDocument) => ({

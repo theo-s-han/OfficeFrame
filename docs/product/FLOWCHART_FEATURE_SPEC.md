@@ -121,8 +121,10 @@
 - 단계명
 - 단계 유형
 - lane (선택)
-- 설명 (선택)
 - 담당자 (선택)
+- 입력값/입력 문서/입력 데이터 (선택)
+- 출력값/산출물/결과 (선택)
+- 설명/판단 기준 (선택)
 
 타입별 필드:
 
@@ -166,6 +168,8 @@ type FlowchartStep = {
   type: FlowchartNodeType;
   lane?: string;
   owner?: string;
+  input?: string;
+  output?: string;
   notes?: string;
   nextStepId?: string;
   branches?: Array<{

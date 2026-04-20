@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type CSSProperties } from "react";
 import {
   flowchartNodeTypeOptions,
   getFallbackFlowchartLayout,
+  getFlowchartNodeSymbolBounds,
+  getFlowchartNodeVisualMetrics,
   type FlowchartDirection,
   type FlowchartLayoutNode,
   type FlowchartDocument,
@@ -34,11 +36,14 @@ function getEdgeGeometry(
   targetStep: FlowchartLayoutNode,
   direction: FlowchartDirection,
 ): EdgeGeometry {
+  const sourceBounds = getFlowchartNodeSymbolBounds(sourceStep);
+  const targetBounds = getFlowchartNodeSymbolBounds(targetStep);
+
   if (direction === "LR") {
-    const startX = sourceStep.position.x + sourceStep.size.width;
-    const startY = sourceStep.position.y + sourceStep.size.height / 2;
-    const endX = targetStep.position.x;
-    const endY = targetStep.position.y + targetStep.size.height / 2;
+    const startX = sourceBounds.right;
+    const startY = sourceBounds.centerY;
+    const endX = targetBounds.left;
+    const endY = targetBounds.centerY;
     const midX = startX + (endX - startX) / 2;
 
     return {
@@ -48,10 +53,10 @@ function getEdgeGeometry(
     };
   }
 
-  const startX = sourceStep.position.x + sourceStep.size.width / 2;
-  const startY = sourceStep.position.y + sourceStep.size.height;
-  const endX = targetStep.position.x + targetStep.size.width / 2;
-  const endY = targetStep.position.y;
+  const startX = sourceBounds.centerX;
+  const startY = sourceBounds.bottom;
+  const endX = targetBounds.centerX;
+  const endY = targetBounds.top;
   const midY = startY + (endY - startY) / 2;
 
   return {
@@ -59,6 +64,37 @@ function getEdgeGeometry(
     labelX: startX + (endX - startX) / 2,
     labelY: midY - 8,
   };
+}
+
+function getStepDetail(step: FlowchartLayoutNode) {
+  if (!step.notes?.trim()) {
+    return "";
+  }
+
+  if (step.type === "decision") {
+    return `판단 기준: ${step.notes.trim()}`;
+  }
+
+  if (step.type === "start") {
+    return `시작 조건: ${step.notes.trim()}`;
+  }
+
+  if (step.type === "end") {
+    return `종료 결과: ${step.notes.trim()}`;
+  }
+
+  return step.notes.trim();
+}
+
+function getStepInputOutput(step: FlowchartLayoutNode) {
+  const input = step.input?.trim() ?? "";
+  const output = step.output?.trim() ?? "";
+
+  if (input && output) {
+    return `${input} -> ${output}`;
+  }
+
+  return input || output;
 }
 
 export function FlowchartPreview({
@@ -106,7 +142,10 @@ export function FlowchartPreview({
         <svg
           aria-hidden="true"
           className="flowchart-static-edge-layer"
+          height={canvasHeight}
+          preserveAspectRatio="xMinYMin meet"
           viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
+          width={canvasWidth}
         >
           <defs>
             <marker
@@ -159,6 +198,19 @@ export function FlowchartPreview({
 
         {layout.steps.map((step) => {
           const hasCaption = Boolean(step.lane?.trim() || step.owner?.trim());
+          const metrics = getFlowchartNodeVisualMetrics(step.type);
+          const detailText = getStepDetail(step);
+          const inputOutputText = getStepInputOutput(step);
+          const nodeStyle = {
+            left: step.position.x,
+            minHeight: `${metrics.height}px`,
+            top: step.position.y,
+            width: `${metrics.width}px`,
+            "--flowchart-node-width": `${metrics.width}px`,
+            "--flowchart-node-height": `${metrics.height}px`,
+            "--flowchart-symbol-height": `${metrics.symbolHeight}px`,
+            "--flowchart-symbol-width": `${metrics.symbolWidth}px`,
+          } as CSSProperties;
 
           return (
             <button
@@ -166,10 +218,7 @@ export function FlowchartPreview({
                 selectedStepId === step.id ? " is-selected" : ""
               }`}
               key={step.id}
-              style={{
-                left: step.position.x,
-                top: step.position.y,
-              }}
+              style={nodeStyle}
               type="button"
               onClick={() => onSelectStep(step.id)}
             >
@@ -177,6 +226,12 @@ export function FlowchartPreview({
                 <div className="flowchart-node-symbol-inner">
                   <div className="flowchart-node-type">{getNodeTypeLabel(step.type)}</div>
                   <div className="flowchart-node-title">{step.label || "이름 없는 단계"}</div>
+                  {detailText ? (
+                    <div className="flowchart-node-detail">{detailText}</div>
+                  ) : null}
+                  {inputOutputText ? (
+                    <div className="flowchart-node-io">{inputOutputText}</div>
+                  ) : null}
                 </div>
               </div>
 
